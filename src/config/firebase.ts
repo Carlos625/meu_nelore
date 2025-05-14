@@ -14,20 +14,10 @@ const firebaseConfig = {
   measurementId: "G-RTQ9LDZK0D"
 }
 
-console.log('Inicializando Firebase...')
 const app = initializeApp(firebaseConfig)
-console.log('Firebase inicializado com sucesso')
-
 const db = getFirestore(app)
-console.log('Firestore inicializado')
-
 const storage = getStorage(app)
-console.log('Storage inicializado')
-
 const auth = getAuth(app)
-console.log('Auth inicializado')
-
 const analytics = getAnalytics(app)
-console.log('Analytics inicializado')
 
 export { db, storage, auth, analytics } 

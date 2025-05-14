@@ -1,20 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { FaHome, FaExclamationTriangle, FaMoneyBillWave, FaTag } from 'react-icons/fa'
+import { FaTag } from 'react-icons/fa'
 import { FaCow, FaArrowRightToBracket, FaArrowRightFromBracket } from 'react-icons/fa6'
-import { getAnimais, getVacinas, getIncidentes, Animal, Vacina, Incidente } from '../services/firestore'
+import { getAnimais, getVacinas, getIncidentes, Incidente, getConfiguracao, updateConfiguracao, limparDados } from '../services/firestore'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { Pie } from 'react-chartjs-2'
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
-ChartJS.register(ArcElement, Tooltip, Legend)
-
-interface DashboardStats {
-  totalAnimais: number
-  totalEntradas: number
-  totalSaidas: number
-  totalBrincoDisponivel: number
-  totalAnimaisVacinados?: number
-}
+import BrincoModal from '../components/BrincoModal'
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true)
@@ -28,7 +18,9 @@ const Dashboard = () => {
   const [dataInicial, setDataInicial] = useState('')
   const [dataFinal, setDataFinal] = useState('')
   const [ultimosIncidentes, setUltimosIncidentes] = useState<Incidente[]>([])
-  const [totalAnimaisVacinados, setTotalAnimaisVacinados] = useState(0)
+  const [, setTotalAnimaisVacinados] = useState(0)
+  const [isBrincoModalOpen, setIsBrincoModalOpen] = useState(false)
+  const [quantidadeTotalBrinco, setQuantidadeTotalBrinco] = useState(300)
 
   useEffect(() => {
     loadData()
@@ -37,9 +29,15 @@ const Dashboard = () => {
   const loadData = async () => {
     setLoading(true)
     try {
-      const animais = await getAnimais()
-      const vacinas = await getVacinas('')
-      const incidentes = await getIncidentes('')
+      const [animais, vacinas, incidentes, config] = await Promise.all([
+        getAnimais(),
+        getVacinas(''),
+        getIncidentes(''),
+        getConfiguracao()
+      ])
+
+      setQuantidadeTotalBrinco(config.quantidadeTotalBrinco)
+
       // Filtro por data de entrada
       const animaisFiltrados = animais.filter(a => {
         const dataEntrada = new Date(a.dataEntrada)
@@ -47,19 +45,55 @@ const Dashboard = () => {
         const beforeEnd = !dataFinal || dataEntrada <= new Date(dataFinal)
         return afterStart && beforeEnd
       })
-      const entradas = animaisFiltrados.filter(a => a.status === 'ativo').length
-      const saidas = animaisFiltrados.filter(a => a.status !== 'ativo').length
+
+      // Calcular animais vacinados
+      const animaisVacinados = animaisFiltrados.filter(a => 
+        vacinas.some(v => v.animalBrinco === a.brinco)
+      ).length
+
+      const entradas = animaisFiltrados.filter(a => a.status === 'Ativo').length
+      const saidas = animaisFiltrados.filter(a => a.status !== 'Ativo').length
+
       setStats({
         totalAnimais: animaisFiltrados.length,
         totalEntradas: entradas,
         totalSaidas: saidas,
-        totalBrincoDisponivel: 300 - animais.filter(a => a.status === 'ativo').length,
-        totalAnimaisVacinados: animaisFiltrados.filter(a => vacinas.some(v => v.animalBrinco === a.brinco)).length
+        totalBrincoDisponivel: config.quantidadeTotalBrinco - animais.filter(a => a.status === 'Ativo').length,
+        totalAnimaisVacinados: animaisVacinados
       })
-      setTotalAnimaisVacinados(animaisFiltrados.filter(a => vacinas.some(v => v.animalBrinco === a.brinco)).length)
+
+      setTotalAnimaisVacinados(animaisVacinados)
       setUltimosIncidentes(incidentes.slice(-5).reverse())
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveQuantidadeBrinco = async (quantidade: number) => {
+    try {
+      await updateConfiguracao({ quantidadeTotalBrinco: quantidade })
+      setQuantidadeTotalBrinco(quantidade)
+      loadData() // Recarrega os dados para atualizar o total de brincos disponíveis
+    } catch (error) {
+      console.error('Erro ao salvar quantidade de brincos:', error)
+    }
+  }
+
+  const handleLimparDados = async () => {
+    if (!window.confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita!')) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      await limparDados()
+      await loadData()
+      alert('Dados limpos com sucesso!')
+    } catch (error) {
+      console.error('Erro ao limpar dados:', error)
+      alert('Erro ao limpar dados. Por favor, tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -72,9 +106,17 @@ const Dashboard = () => {
   return (
     <div>
       <div className="mb-8">
-        <div className="flex items-center gap-4 mb-2">
-          <img src="/Nelore.png" alt="Logo Meu Nelore" className="w-14 h-14 rounded-full shadow" />
-          <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight drop-shadow-sm">Dashboard</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 mb-2">
+            <img src="/Nelore.png" alt="Logo Meu Nelore" className="w-14 h-14 rounded-full shadow" />
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight drop-shadow-sm">Dashboard</h2>
+          </div>
+          <button
+            onClick={handleLimparDados}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Limpar Dados
+          </button>
         </div>
         <p className="mt-2 text-lg text-gray-500 font-light">Visão geral do seu rebanho</p>
         <div className="mt-6 flex flex-col sm:flex-row gap-4 items-center bg-white/80 rounded-xl shadow-sm px-4 py-3 w-full max-w-lg">
@@ -143,7 +185,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="bg-blue-50 px-6 py-3 rounded-b-2xl">
-            <Link to="/animais?status=ativo" className="font-medium text-blue-700 hover:text-blue-900 transition">Ver detalhes</Link>
+            <Link to="/animais?status=Ativo" className="font-medium text-blue-700 hover:text-blue-900 transition">Ver detalhes</Link>
           </div>
         </div>
         {/* Total Saídas */}
@@ -162,7 +204,10 @@ const Dashboard = () => {
           </div>
         </div>
         {/* Brincos Disponíveis */}
-        <div className="bg-gradient-to-br from-teal-50 to-white shadow-lg rounded-2xl transition-transform hover:-translate-y-1 hover:shadow-2xl">
+        <div 
+          className="bg-gradient-to-br from-teal-50 to-white shadow-lg rounded-2xl transition-transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
+          onClick={() => setIsBrincoModalOpen(true)}
+        >
           <div className="p-6 flex items-center gap-4">
             <div className="flex-shrink-0 bg-teal-100 rounded-full p-3">
               <FaTag className="h-8 w-8 text-teal-600" />
@@ -173,40 +218,17 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="bg-teal-50 px-6 py-3 rounded-b-2xl">
-            <Link to="/animais?status=ativo" className="font-medium text-teal-700 hover:text-teal-900 transition">Ver detalhes</Link>
+            <span className="font-medium text-teal-700 hover:text-teal-900 transition">Clique para ajustar</span>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-center my-8">
-        <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col items-center w-full max-w-xs">
-          <Pie
-            data={{
-              labels: ['Vacinados', 'Não vacinados'],
-              datasets: [
-                {
-                  data: [stats.totalAnimaisVacinados || 0, (stats.totalAnimais || 0) - (stats.totalAnimaisVacinados || 0)],
-                  backgroundColor: ['#4ade80', '#fca5a5'],
-                  borderColor: ['#22c55e', '#f87171'],
-                  borderWidth: 2,
-                },
-              ],
-            }}
-            options={{
-              plugins: {
-                legend: {
-                  display: true,
-                  position: 'bottom',
-                  labels: { font: { size: 14 } }
-                },
-              },
-              responsive: true,
-              maintainAspectRatio: false,
-            }}
-            height={220}
-          />
-        </div>
-      </div>
+      <BrincoModal
+        isOpen={isBrincoModalOpen}
+        onClose={() => setIsBrincoModalOpen(false)}
+        onSave={handleSaveQuantidadeBrinco}
+        quantidadeAtual={quantidadeTotalBrinco}
+      />
 
       {/* Últimos Incidentes */}
       <div className="mt-10">

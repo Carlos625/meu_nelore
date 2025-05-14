@@ -12,30 +12,60 @@ export default function VacinaForm() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    getAnimais().then(setAnimais)
+    console.log('Carregando lista de animais...')
+    getAnimais()
+      .then(animais => {
+        console.log('Animais carregados:', animais)
+        setAnimais(animais)
+      })
+      .catch(error => {
+        console.error('Erro ao carregar animais:', error)
+        setErro('Erro ao carregar lista de animais')
+      })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErro('')
+    
     if (!animalBrinco || !tipo || !dataAplicacao) {
       setErro('Preencha todos os campos')
       return
     }
+
     setLoading(true)
     try {
+      console.log('Iniciando cadastro de vacina...')
+      console.log('Dados do formulário:', { animalBrinco, tipo, dataAplicacao })
+
       const dataAplic = new Date(dataAplicacao)
       const dataProxima = new Date(dataAplic)
       dataProxima.setMonth(dataProxima.getMonth() + 6)
-      await addVacina({
+
+      console.log('Datas processadas:', {
+        dataAplicacao: dataAplic.toISOString(),
+        dataProxima: dataProxima.toISOString()
+      })
+
+      const novaVacina: Omit<Vacina, 'id' | 'createdAt' | 'updatedAt'> = {
         animalBrinco,
         nome: tipo,
         dataAplicacao: dataAplic,
         dataProxima
-      } as Omit<Vacina, 'id' | 'createdAt' | 'updatedAt'>)
+      }
+
+      console.log('Dados da vacina para salvar:', novaVacina)
+      const vacinaSalva = await addVacina(novaVacina)
+      console.log('Vacina cadastrada com sucesso!', vacinaSalva)
+      
       navigate('/vacinas')
     } catch (error) {
-      setErro('Erro ao registrar vacina')
+      console.error('Erro ao cadastrar vacina:', error)
+      if (error instanceof Error) {
+        setErro(`Erro ao registrar vacina: ${error.message}`)
+      } else {
+        setErro('Erro ao registrar vacina. Verifique o console para mais detalhes.')
+      }
     } finally {
       setLoading(false)
     }
@@ -45,7 +75,12 @@ export default function VacinaForm() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Registrar Vacina</h1>
       <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
-        {erro && <div className="bg-red-100 text-red-700 p-2 rounded">{erro}</div>}
+        {erro && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <strong className="font-bold">Erro! </strong>
+            <span className="block sm:inline">{erro}</span>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700">Número do Brinco</label>
           <select

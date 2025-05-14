@@ -32,12 +32,18 @@ export default function Animais() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       const animalData = {
-        ...novoAnimal,
-        dataNascimento: novoAnimal.dataNascimento ? new Date(novoAnimal.dataNascimento) : undefined
+        brinco: novoAnimal.brinco,
+        nome: novoAnimal.nome,
+        dataNascimento: novoAnimal.dataNascimento ? new Date(novoAnimal.dataNascimento) : undefined,
+        dataEntrada: new Date(),
+        raca: novoAnimal.raca,
+        sexo: novoAnimal.sexo as 'M' | 'F',
+        status: 'Ativo' as const,
+        observacoes: novoAnimal.observacoes
       }
       await addAnimal(animalData)
       setNovoAnimal({

@@ -10,7 +10,7 @@ export const vacinaService = {
       return []
     }
   },
-  async getByBrinco(animalBrinco: number): Promise<Vacina[]> {
+  async getByBrinco(animalBrinco: string): Promise<Vacina[]> {
     try {
       return await db.vacinas.where('animalBrinco').equals(animalBrinco).toArray()
     } catch (error) {
@@ -18,27 +18,27 @@ export const vacinaService = {
       return []
     }
   },
-  async create(vacina: Omit<Vacina, 'id'>): Promise<Vacina | undefined> {
+  async create(vacina: Omit<Vacina, 'id'>): Promise<Vacina> {
     try {
       const id = await db.vacinas.add(vacina)
-      return { ...vacina, id }
+      return { ...vacina, id: id.toString() }
     } catch (error) {
       console.error('Erro ao criar vacina:', error)
-      return undefined
+      throw error
     }
   },
-  async update(id: number, vacina: Partial<Vacina>): Promise<boolean> {
+  async update(id: string, vacina: Partial<Vacina>): Promise<boolean> {
     try {
-      await db.vacinas.update(id, vacina)
+      await db.vacinas.update(Number(id), vacina)
       return true
     } catch (error) {
       console.error('Erro ao atualizar vacina:', error)
       return false
     }
   },
-  async delete(id: number): Promise<boolean> {
+  async delete(id: string): Promise<boolean> {
     try {
-      await db.vacinas.delete(id)
+      await db.vacinas.delete(Number(id))
       return true
     } catch (error) {
       console.error('Erro ao deletar vacina:', error)
