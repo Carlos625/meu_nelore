@@ -79,5 +79,10 @@ export default defineConfig({
         ]
       }
     })
-  ]
+  ],
+  server: {
+    host: true, // necessário para aceitar conexões externas
+    port: 5173,
+    allowedHosts: ['app.meunelore.online']
+  }
 }) 

@@ -13,18 +13,19 @@ import {
 } from 'firebase/firestore'
 
 // Tipos
-export interface Animal {
-  id?: string
-  brinco: string
-  nome?: string
-  dataNascimento?: Date
-  dataEntrada: Date
-  raca?: string
+export type Animal = {
+  id: string
+  numeroBrinco: string
+  corBrinco: 'amarelo' | 'verde' | 'azul' | 'vermelho'
+  dataEntrada: Timestamp
+  dataNascimento?: Timestamp
+  raca: string
   sexo?: 'M' | 'F'
   status: 'Ativo' | 'Vendido' | 'Abatido' | 'Morto'
   observacoes?: string
-  createdAt: Date
-  updatedAt: Date
+  foto?: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
 
 export interface Incidente {
@@ -66,8 +67,8 @@ export async function addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updat
     const now = new Date()
     const animalData = {
       ...animal,
-      createdAt: now,
-      updatedAt: now
+      createdAt: Timestamp.fromDate(now),
+      updatedAt: Timestamp.fromDate(now)
     }
     console.log('Dados do animal:', animalData)
     
@@ -85,7 +86,7 @@ export async function updateAnimal(id: string, animal: Partial<Animal>) {
   const animalRef = doc(db, 'animais', id)
   const updateData = {
     ...animal,
-    updatedAt: new Date()
+    updatedAt: Timestamp.fromDate(new Date())
   }
   await updateDoc(animalRef, updateData)
   return { id, ...updateData }
@@ -107,7 +108,11 @@ export async function getAnimais() {
       console.log('Dados do documento:', doc.id, data)
       return {
         id: doc.id,
-        ...data
+        ...data,
+        dataEntrada: data.dataEntrada?.toDate?.() || data.dataEntrada,
+        dataNascimento: data.dataNascimento?.toDate?.() || data.dataNascimento,
+        createdAt: data.createdAt?.toDate?.() || data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.() || data.updatedAt
       }
     }) as Animal[]
     

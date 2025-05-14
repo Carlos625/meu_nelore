@@ -4,6 +4,7 @@ import { Animal, getAnimais, deleteAnimal } from '../services/firestore'
 import { Incidente, getIncidentes } from '../services/firestore'
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../components/LoadingSpinner'
+import ImageModal from '../components/ImageModal'
 
 export default function AnimalDetails() {
   const { id } = useParams()
@@ -12,6 +13,7 @@ export default function AnimalDetails() {
   const [incidentes, setIncidentes] = useState<Incidente[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -108,7 +110,8 @@ export default function AnimalDetails() {
               <img
                 src={animal.foto}
                 alt={`Animal ${animal.brinco}`}
-                className="h-24 w-24 rounded-full object-cover"
+                className="h-24 w-24 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setIsImageModalOpen(true)}
               />
             ) : (
               <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
@@ -248,6 +251,13 @@ export default function AnimalDetails() {
           </div>
         )}
       </div>
+
+      <ImageModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        imageUrl={animal.foto || '/placeholder-animal.jpg'}
+        title={`Animal ${animal.brinco}`}
+      />
     </div>
   )
 } 

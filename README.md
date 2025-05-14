@@ -1,25 +1,32 @@
 # Meu Nelore Web
 
-Sistema de gerenciamento de rebanho bovino desenvolvido para produtores rurais.
+Aplicativo web para gerenciamento de rebanho bovino, desenvolvido com React, TypeScript e Firebase.
 
 ## Funcionalidades
 
 - Cadastro e gerenciamento de animais
-- Controle de vacinação
-- Registro de incidentes
-- Dashboard com estatísticas
-- Gestão de brincos
+- Registro de incidentes (doenças, acidentes, etc.)
+- Dashboard com estatísticas do rebanho
+- Funcionamento offline com sincronização automática
+- Interface responsiva para desktop e mobile
 
 ## Tecnologias Utilizadas
 
-- React
+- React 18
 - TypeScript
-- Tailwind CSS
-- Firebase (Firestore)
-- React Router
-- React Icons
+- TailwindCSS
+- Firebase (Firestore e Storage)
+- IndexedDB (via localForage)
+- Vite
+- PWA (Progressive Web App)
 
-## Como Executar
+## Pré-requisitos
+
+- Node.js 18 ou superior
+- npm ou yarn
+- Conta no Firebase
+
+## Configuração do Ambiente
 
 1. Clone o repositório:
 ```bash
@@ -30,11 +37,12 @@ cd meu-nelore-web
 2. Instale as dependências:
 ```bash
 npm install
+# ou
+yarn
 ```
 
-3. Configure as variáveis de ambiente:
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
-```
+3. Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+```env
 VITE_FIREBASE_API_KEY=sua-api-key
 VITE_FIREBASE_AUTH_DOMAIN=seu-auth-domain
 VITE_FIREBASE_PROJECT_ID=seu-project-id
@@ -43,30 +51,42 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=seu-messaging-sender-id
 VITE_FIREBASE_APP_ID=seu-app-id
 ```
 
-4. Execute o projeto:
+4. Inicie o servidor de desenvolvimento:
 ```bash
 npm run dev
+# ou
+yarn dev
 ```
+
+## Scripts Disponíveis
+
+- `npm run dev` - Inicia o servidor de desenvolvimento
+- `npm run build` - Gera a build de produção
+- `npm run preview` - Visualiza a build de produção localmente
+- `npm run lint` - Executa o linter
 
 ## Estrutura do Projeto
 
 ```
 src/
   ├── components/     # Componentes reutilizáveis
+  ├── config/        # Configurações (Firebase, etc.)
   ├── pages/         # Páginas da aplicação
-  ├── services/      # Serviços e integrações
-  ├── config/        # Configurações
-  └── types/         # Definições de tipos
+  ├── services/      # Serviços (IndexedDB, Firebase, etc.)
+  ├── types/         # Definições de tipos TypeScript
+  ├── App.tsx        # Componente principal
+  ├── main.tsx       # Ponto de entrada
+  └── routes.tsx     # Configuração de rotas
 ```
 
 ## Contribuição
 
 1. Faça um fork do projeto
 2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
+3. Faça commit das suas alterações (`git commit -m 'Adiciona nova feature'`)
+4. Faça push para a branch (`git push origin feature/nova-feature`)
 5. Abra um Pull Request
 
 ## Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes. 
+Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para mais detalhes. 

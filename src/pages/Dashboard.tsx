@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FaTag } from 'react-icons/fa'
 import { FaCow, FaArrowRightToBracket, FaArrowRightFromBracket } from 'react-icons/fa6'
-import { getAnimais, getVacinas, getIncidentes, Incidente, getConfiguracao, updateConfiguracao, limparDados } from '../services/firestore'
+import { getAnimais, getVacinas, getIncidentes, Incidente, getConfiguracao, updateConfiguracao } from '../services/firestore'
+import { Timestamp } from 'firebase/firestore'
 import LoadingSpinner from '../components/LoadingSpinner'
 import BrincoModal from '../components/BrincoModal'
 
@@ -40,19 +41,19 @@ const Dashboard = () => {
 
       // Filtro por data de entrada
       const animaisFiltrados = animais.filter(a => {
-        const dataEntrada = new Date(a.dataEntrada)
+        const dataEntrada = a.dataEntrada instanceof Timestamp ? a.dataEntrada.toDate() : a.dataEntrada
         const afterStart = !dataInicial || dataEntrada >= new Date(dataInicial)
         const beforeEnd = !dataFinal || dataEntrada <= new Date(dataFinal)
-        return afterStart && beforeEnd
+        return afterStart && beforeEnd && a.status === 'Ativo'
       })
 
       // Calcular animais vacinados
       const animaisVacinados = animaisFiltrados.filter(a => 
-        vacinas.some(v => v.animalBrinco === a.brinco)
+        vacinas.some(v => v.animalBrinco === a.numeroBrinco)
       ).length
 
-      const entradas = animaisFiltrados.filter(a => a.status === 'Ativo').length
-      const saidas = animaisFiltrados.filter(a => a.status !== 'Ativo').length
+      const entradas = animaisFiltrados.length
+      const saidas = animais.filter(a => a.status !== 'Ativo').length
 
       setStats({
         totalAnimais: animaisFiltrados.length,
@@ -81,24 +82,6 @@ const Dashboard = () => {
     }
   }
 
-  const handleLimparDados = async () => {
-    if (!window.confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita!')) {
-      return
-    }
-
-    try {
-      setLoading(true)
-      await limparDados()
-      await loadData()
-      alert('Dados limpos com sucesso!')
-    } catch (error) {
-      console.error('Erro ao limpar dados:', error)
-      alert('Erro ao limpar dados. Por favor, tente novamente.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   if (loading) {
     return <LoadingSpinner />
   }
@@ -111,12 +94,6 @@ const Dashboard = () => {
             <img src="/Nelore.png" alt="Logo Meu Nelore" className="w-14 h-14 rounded-full shadow" />
             <h2 className="text-4xl sm:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight drop-shadow-sm">Dashboard</h2>
           </div>
-          <button
-            onClick={handleLimparDados}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Limpar Dados
-          </button>
         </div>
         <p className="mt-2 text-lg text-gray-500 font-light">Visão geral do seu rebanho</p>
         <div className="mt-6 flex flex-col sm:flex-row gap-4 items-center bg-white/80 rounded-xl shadow-sm px-4 py-3 w-full max-w-lg">
@@ -250,9 +227,9 @@ const Dashboard = () => {
                     <div className="flex items-center">
                       <div className="ml-4">
                         <p className="text-sm font-semibold text-primary-600">
-                          Animal #{incidente.animalBrinco} - {incidente.tipo.charAt(0).toUpperCase() + incidente.tipo.slice(1)}
+                          Animal #{incidente.animalBrinco?.toString() || 'N/A'} - {incidente.tipo?.charAt(0).toUpperCase() + incidente.tipo?.slice(1) || 'N/A'}
                         </p>
-                        <p className="text-sm text-gray-500">{incidente.descricao}</p>
+                        <p className="text-sm text-gray-500">{incidente.descricao || 'Sem descrição'}</p>
                       </div>
                     </div>
                     <div className="ml-2 flex-shrink-0 flex mt-2 sm:mt-0">
@@ -268,7 +245,7 @@ const Dashboard = () => {
                   <div className="mt-2 sm:flex sm:justify-between px-4 pb-2">
                     <div className="sm:flex">
                       <p className="flex items-center text-xs text-gray-400">
-                        {incidente.data.toLocaleDateString()}
+                        {incidente.data instanceof Date ? incidente.data.toLocaleDateString() : new Date(incidente.data).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
