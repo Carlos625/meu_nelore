@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { addIncidente, getAnimais, getIncidentes, Incidente, Animal } from '../services/firestore'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { addIncidente, getAnimais } from '../services/firestore'
+import { Animal, Incidente, IncidenteStatus, IncidenteTipo } from '../types'
+import { Timestamp } from 'firebase/firestore'
 
 export default function IncidentForm() {
   const navigate = useNavigate()
@@ -11,11 +12,10 @@ export default function IncidentForm() {
 
   const [loading, setLoading] = useState(false)
   const [incidente, setIncidente] = useState<Partial<Incidente>>({
-    tipo: 'doenca',
+    tipo: IncidenteTipo.DOENCA,
     descricao: '',
     data: new Date(),
-    status: 'pendente',
-    observacoes: ''
+    status: IncidenteStatus.PENDENTE
   })
   const [foto, setFoto] = useState<string | null>(null)
   const [erro, setErro] = useState('')
@@ -67,7 +67,17 @@ export default function IncidentForm() {
 
     try {
       setLoading(true)
-      await addIncidente({ ...incidente, foto } as Omit<Incidente, 'id' | 'createdAt' | 'updatedAt'>)
+      const data = incidente.data instanceof Timestamp 
+        ? incidente.data.toDate()
+        : incidente.data instanceof Date
+          ? incidente.data
+          : new Date()
+
+      await addIncidente({ 
+        ...incidente, 
+        data,
+        foto 
+      } as Omit<Incidente, 'id' | 'createdAt' | 'updatedAt'>)
       navigate('/incidentes')
     } catch (error) {
       console.error('Erro ao salvar incidente:', error)
@@ -130,7 +140,11 @@ export default function IncidentForm() {
               required
             >
               <option value="">Selecione um animal</option>
-              {/* Aqui você pode adicionar uma lista de animais disponíveis */}
+              {animais.map(animal => (
+                <option key={animal.id} value={animal.id}>
+                  {animal.numeroBrinco} - {animal.raca}
+                </option>
+              ))}
             </select>
           </div>
         )}
@@ -142,19 +156,19 @@ export default function IncidentForm() {
               {animal.foto ? (
                 <img
                   src={animal.foto}
-                  alt={`Animal ${animal.brinco}`}
+                  alt={`Animal ${animal.numeroBrinco}`}
                   className="h-12 w-12 rounded-full object-cover"
                 />
               ) : (
                 <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
                   <span className="text-gray-500 text-lg font-medium">
-                    {animal.brinco}
+                    {animal.numeroBrinco}
                   </span>
                 </div>
               )}
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-900">
-                  Brinco {animal.brinco}
+                  Brinco {animal.numeroBrinco}
                 </p>
                 <p className="text-sm text-gray-500">{animal.raca}</p>
               </div>
@@ -170,13 +184,15 @@ export default function IncidentForm() {
             <select
               id="tipo"
               value={incidente.tipo}
-              onChange={(e) => setIncidente({ ...incidente, tipo: e.target.value as Incidente['tipo'] })}
+              onChange={(e) => setIncidente({ ...incidente, tipo: e.target.value as IncidenteTipo })}
               className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               required
             >
-              <option value="doenca">Doença</option>
-              <option value="acidente">Acidente</option>
-              <option value="outro">Outro</option>
+              {Object.values(IncidenteTipo).map(tipo => (
+                <option key={tipo} value={tipo}>
+                  {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -187,11 +203,14 @@ export default function IncidentForm() {
             <select
               id="status"
               value={incidente.status}
-              onChange={(e) => setIncidente({ ...incidente, status: e.target.value as Incidente['status'] })}
+              onChange={(e) => setIncidente({ ...incidente, status: e.target.value as IncidenteStatus })}
               className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
             >
-              <option value="pendente">Pendente</option>
-              <option value="resolvido">Resolvido</option>
+              {Object.values(IncidenteStatus).map(status => (
+                <option key={status} value={status}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -202,7 +221,11 @@ export default function IncidentForm() {
             <input
               type="date"
               id="data"
-              value={incidente.data ? new Date(incidente.data).toISOString().split('T')[0] : ''}
+              value={incidente.data instanceof Date 
+                ? incidente.data.toISOString().split('T')[0]
+                : incidente.data instanceof Timestamp
+                  ? incidente.data.toDate().toISOString().split('T')[0]
+                  : new Date().toISOString().split('T')[0]}
               onChange={(e) => setIncidente({ ...incidente, data: new Date(e.target.value) })}
               className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
               required
@@ -251,33 +274,19 @@ export default function IncidentForm() {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="observacoes" className="block text-sm font-medium text-gray-700">
-            Observações
-          </label>
-          <textarea
-            id="observacoes"
-            value={incidente.observacoes || ''}
-            onChange={(e) => setIncidente({ ...incidente, observacoes: e.target.value })}
-            rows={3}
-            className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-          />
-        </div>
-
         <div className="flex justify-end space-x-3">
           <button
             type="button"
             onClick={() => navigate('/incidentes')}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            disabled={loading}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
           >
-            {loading ? 'Salvando...' : 'Salvar'}
+            Salvar
           </button>
         </div>
       </form>

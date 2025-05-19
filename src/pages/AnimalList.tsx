@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getAnimais, Animal } from '../services/firestore'
+import { getAnimais } from '../services/firestore'
+import { Animal } from '../types'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { FaCow } from 'react-icons/fa6'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -30,12 +31,38 @@ export default function AnimalList() {
   }
 
   const animaisFiltrados = animais.filter(animal => {
-    const matchBusca = animal.brinco.toString().includes(busca) ||
-      (animal.raca || '').toLowerCase().includes(busca.toLowerCase())
+    if (!animal) return false
+
+    const numeroBrinco = String(animal.numeroBrinco || '')
+
+    const raca = typeof animal.raca === 'string' 
+      ? animal.raca.toLowerCase() 
+      : ''
+
+    const buscaLower = busca.toLowerCase()
+
+    const matchBusca = numeroBrinco.includes(busca) || raca.includes(buscaLower)
     const matchStatus = filtroStatus === 'todos' || animal.status === filtroStatus
-    const dataEntrada = animal.createdAt ? new Date(animal.createdAt) : new Date()
+
+    let dataEntrada: Date
+    try {
+      if (animal.dataEntrada instanceof Date) {
+        dataEntrada = animal.dataEntrada
+      } else if (animal.dataEntrada?.toDate) {
+        dataEntrada = animal.dataEntrada.toDate()
+      } else if (typeof animal.dataEntrada === 'string') {
+        dataEntrada = new Date(animal.dataEntrada)
+      } else {
+        dataEntrada = new Date()
+      }
+    } catch (error) {
+      console.error('Erro ao converter data:', error)
+      dataEntrada = new Date()
+    }
+
     const afterStart = !dataInicial || dataEntrada >= new Date(dataInicial)
     const beforeEnd = !dataFinal || dataEntrada <= new Date(dataFinal)
+
     return matchBusca && matchStatus && afterStart && beforeEnd
   })
 
@@ -122,25 +149,25 @@ export default function AnimalList() {
                       {animal.foto ? (
                         <img
                           src={animal.foto}
-                          alt={`Animal ${animal.brinco}`}
+                          alt={`Animal ${String(animal.numeroBrinco || '')}`}
                           className="h-12 w-12 rounded-full object-cover"
                         />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
                           <span className="text-gray-500 text-lg font-medium">
-                            {animal.brinco}
+                            {String(animal.numeroBrinco || '')}
                           </span>
                         </div>
                       )}
                       <div className="ml-4">
                         <p className="text-sm font-medium text-primary-600 flex items-center gap-2">
-                          Brinco {animal.brinco}
+                          Brinco {String(animal.numeroBrinco || '')}
                           <span className={`inline-block w-3 h-3 rounded-full ${
                             animal.corBrinco === 'azul' ? 'bg-blue-500' : animal.corBrinco === 'verde' ? 'bg-green-500' : 'bg-yellow-400'
-                          }`} title={animal.corBrinco}></span>
-                          <span className="text-xs text-gray-500 capitalize">{animal.corBrinco}</span>
+                          }`} title={animal.corBrinco || ''}></span>
+                          <span className="text-xs text-gray-500 capitalize">{animal.corBrinco || ''}</span>
                         </p>
-                        <p className="text-sm text-gray-500">{animal.raca}</p>
+                        <p className="text-sm text-gray-500">{animal.raca || ''}</p>
                       </div>
                     </div>
                     <div className="ml-2 flex-shrink-0 flex">
@@ -151,7 +178,9 @@ export default function AnimalList() {
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {animal.status.charAt(0).toUpperCase() + animal.status.slice(1)}
+                        {typeof animal.status === 'string' 
+                          ? animal.status.charAt(0).toUpperCase() + animal.status.slice(1)
+                          : 'Status Desconhecido'}
                       </p>
                     </div>
                   </div>

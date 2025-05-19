@@ -2,7 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import AnimalList from './pages/AnimalList'
-import AnimalForm from './pages/AnimalForm'
+import AnimalFormPage from './pages/AnimalFormPage'
 import AnimalDetails from './pages/AnimalDetails'
 import IncidentList from './pages/IncidentList'
 import IncidentForm from './pages/IncidentForm'
@@ -25,7 +25,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'animais/novo',
-        element: <AnimalForm />
+        element: <AnimalFormPage />
       },
       {
         path: 'animais/:id',
@@ -33,7 +33,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'animais/:id/editar',
-        element: <AnimalForm />
+        element: <AnimalFormPage />
       },
       {
         path: 'incidentes',

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { incidenteService, animalService } from '../services'
 import { Incidente } from '../types/incidente'
 import { Animal } from '../types/animal'
-import LoadingSpinner from '../components/LoadingSpinner'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 
 export default function IncidentList() {
@@ -135,9 +134,11 @@ export default function IncidentList() {
                         )}
                         <div className="ml-4">
                           <p className="text-sm font-medium text-primary-600">
-                            Animal #{animal?.brinco} - {incidente.tipo.charAt(0).toUpperCase() + incidente.tipo.slice(1)}
+                            Animal #{animal?.brinco || 'N/A'} - {typeof incidente.tipo === 'string' 
+                              ? incidente.tipo.charAt(0).toUpperCase() + incidente.tipo.slice(1)
+                              : 'Tipo não informado'}
                           </p>
-                          <p className="text-sm text-gray-500">{incidente.descricao}</p>
+                          <p className="text-sm text-gray-500">{incidente.descricao || 'Sem descrição'}</p>
                         </div>
                       </div>
                       <div className="ml-2 flex-shrink-0 flex">
@@ -146,14 +147,16 @@ export default function IncidentList() {
                             ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {incidente.status === 'resolvido' ? 'Resolvido' : 'Pendente'}
+                          {typeof incidente.status === 'string'
+                            ? incidente.status === 'resolvido' ? 'Resolvido' : 'Pendente'
+                            : 'Status Desconhecido'}
                         </p>
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
                         <p className="flex items-center text-sm text-gray-500">
-                          {new Date(incidente.data).toLocaleDateString()}
+                          {new Date(incidente.data).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
                     </div>

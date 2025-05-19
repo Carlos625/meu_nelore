@@ -177,7 +177,7 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="bg-yellow-50 px-6 py-3 rounded-b-2xl">
-            <Link to="/animais?status=vendido" className="font-medium text-yellow-700 hover:text-yellow-900 transition">Ver detalhes</Link>
+            <Link to="/animais?status=Vendido" className="font-medium text-yellow-700 hover:text-yellow-900 transition">Ver detalhes</Link>
           </div>
         </div>
         {/* Brincos Disponíveis */}
@@ -245,7 +245,7 @@ const Dashboard = () => {
                   <div className="mt-2 sm:flex sm:justify-between px-4 pb-2">
                     <div className="sm:flex">
                       <p className="flex items-center text-xs text-gray-400">
-                        {incidente.data instanceof Date ? incidente.data.toLocaleDateString() : new Date(incidente.data).toLocaleDateString()}
+                        {incidente.data instanceof Timestamp ? incidente.data.toDate().toLocaleDateString() : new Date(incidente.data).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

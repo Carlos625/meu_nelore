@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { incidenteService, animalService } from '../services'
-import { Incidente } from '../types/incidente'
-import { Animal } from '../types/animal'
-import LoadingSpinner from '../components/LoadingSpinner'
+import { getIncidentes, getAnimal, deleteIncidente } from '../services/firestore'
+import { Animal, Incidente, IncidenteStatus, IncidenteTipo } from '../types'
 
 export default function IncidentDetails() {
   const { id } = useParams()
@@ -18,13 +16,16 @@ export default function IncidentDetails() {
   }, [id])
 
   async function loadData() {
+    if (!id) return
+
     try {
       setLoading(true)
-      const data = await incidenteService.getByBrinco(Number(id))
+      const incidentes = await getIncidentes(id)
+      const data = incidentes[0]
       if (data) {
         setIncidente(data)
         if (data.animalId) {
-          const animalData = await animalService.getByBrinco(Number(data.animalId))
+          const animalData = await getAnimal(data.animalId)
           if (animalData) {
             setAnimal(animalData)
           }
@@ -46,7 +47,7 @@ export default function IncidentDetails() {
     if (window.confirm('Tem certeza que deseja excluir este incidente?')) {
       try {
         setLoading(true)
-        await incidenteService.delete(incidente.id)
+        await deleteIncidente(incidente.id)
         navigate('/incidentes')
       } catch (error) {
         console.error('Erro ao excluir incidente:', error)
@@ -116,19 +117,19 @@ export default function IncidentDetails() {
                     {animal.foto ? (
                       <img
                         src={animal.foto}
-                        alt={`Animal ${animal.brinco}`}
+                        alt={`Animal ${animal.numeroBrinco}`}
                         className="h-12 w-12 rounded-full object-cover"
                       />
                     ) : (
                       <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
                         <span className="text-gray-500 text-lg font-medium">
-                          {animal.brinco}
+                          {animal.numeroBrinco}
                         </span>
                       </div>
                     )}
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-900">
-                        Brinco {animal.brinco}
+                        Brinco {animal.numeroBrinco}
                       </p>
                       <p className="text-sm text-gray-500">{animal.raca}</p>
                     </div>
@@ -140,9 +141,9 @@ export default function IncidentDetails() {
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Tipo</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {incidente.tipo === 'doenca' && 'Doença'}
-                {incidente.tipo === 'acidente' && 'Acidente'}
-                {incidente.tipo === 'outro' && 'Outro'}
+                {incidente.tipo === IncidenteTipo.DOENCA && 'Doença'}
+                {incidente.tipo === IncidenteTipo.FERIMENTO && 'Ferimento'}
+                {incidente.tipo === IncidenteTipo.OUTRO && 'Outro'}
               </dd>
             </div>
 
@@ -151,12 +152,12 @@ export default function IncidentDetails() {
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    incidente.status === 'pendente'
+                    incidente.status === IncidenteStatus.PENDENTE
                       ? 'bg-yellow-100 text-yellow-800'
                       : 'bg-green-100 text-green-800'
                   }`}
                 >
-                  {incidente.status === 'pendente' ? 'Pendente' : 'Resolvido'}
+                  {incidente.status === IncidenteStatus.PENDENTE ? 'Pendente' : 'Resolvido'}
                 </span>
               </dd>
             </div>
@@ -164,7 +165,9 @@ export default function IncidentDetails() {
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Data</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {new Date(incidente.data).toLocaleDateString()}
+                {incidente.data instanceof Date 
+                  ? incidente.data.toLocaleDateString()
+                  : incidente.data.toDate().toLocaleDateString()}
               </dd>
             </div>
 
@@ -174,28 +177,6 @@ export default function IncidentDetails() {
                 {incidente.descricao}
               </dd>
             </div>
-
-            {incidente.foto && (
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Foto</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  <img
-                    src={incidente.foto}
-                    alt="Foto do incidente"
-                    className="h-64 w-64 object-cover rounded-lg"
-                  />
-                </dd>
-              </div>
-            )}
-
-            {incidente.observacoes && (
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Observações</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {incidente.observacoes}
-                </dd>
-              </div>
-            )}
           </dl>
         </div>
       </div>

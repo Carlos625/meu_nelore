@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Vacina, Animal, getVacinas, addVacina, getAnimais } from '../services/firestore'
+import { Timestamp } from 'firebase/firestore'
 
 export default function Vacinas() {
   const [vacinas, setVacinas] = useState<Vacina[]>([])
@@ -159,12 +160,24 @@ export default function Vacinas() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {animal ? `${animal.brinco} - ${animal.nome || 'Sem nome'}` : 'Animal não encontrado'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{vacina.nome}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{vacina.nome || 'Não informado'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {vacina.dataAplicacao.toLocaleDateString()}
+                    {vacina.dataAplicacao instanceof Date 
+                      ? vacina.dataAplicacao.toLocaleDateString('pt-BR')
+                      : vacina.dataAplicacao?.toDate 
+                        ? vacina.dataAplicacao.toDate().toLocaleDateString('pt-BR')
+                        : typeof vacina.dataAplicacao === 'string'
+                          ? new Date(vacina.dataAplicacao).toLocaleDateString('pt-BR')
+                          : 'Data não informada'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {vacina.dataProxima?.toLocaleDateString() || '-'}
+                    {vacina.dataProxima instanceof Date 
+                      ? vacina.dataProxima.toLocaleDateString('pt-BR')
+                      : vacina.dataProxima?.toDate 
+                        ? vacina.dataProxima.toDate().toLocaleDateString('pt-BR')
+                        : typeof vacina.dataProxima === 'string'
+                          ? new Date(vacina.dataProxima).toLocaleDateString('pt-BR')
+                          : 'Não agendada'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{vacina.observacoes || '-'}</td>
                 </tr>

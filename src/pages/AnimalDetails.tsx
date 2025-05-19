@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Animal, getAnimais, deleteAnimal } from '../services/firestore'
-import { Incidente, getIncidentes } from '../services/firestore'
+import { getAnimais, deleteAnimal } from '../services/firestore'
+import { getIncidentes } from '../services/firestore'
+import { Animal, Incidente, AnimalStatus } from '../types'
 import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ImageModal from '../components/ImageModal'
@@ -60,7 +61,7 @@ export default function AnimalDetails() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <LoadingSpinner />
       </div>
     )
   }
@@ -81,7 +82,7 @@ export default function AnimalDetails() {
     <div>
       <div className="sm:flex sm:items-center sm:justify-between mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">
-          Animal #{animal.brinco}
+          Animal #{animal.numeroBrinco}
         </h1>
         <div className="mt-3 sm:mt-0 flex space-x-3">
           <button
@@ -109,14 +110,14 @@ export default function AnimalDetails() {
             {animal.foto ? (
               <img
                 src={animal.foto}
-                alt={`Animal ${animal.brinco}`}
+                alt={`Animal ${animal.numeroBrinco}`}
                 className="h-24 w-24 rounded-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => setIsImageModalOpen(true)}
               />
             ) : (
               <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-500 text-2xl font-medium">
-                  {animal.brinco}
+                  {animal.numeroBrinco}
                 </span>
               </div>
             )}
@@ -135,40 +136,52 @@ export default function AnimalDetails() {
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Raça</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {animal.raca}
+                {animal.raca || 'Não informada'}
               </dd>
             </div>
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Idade</dt>
+              <dt className="text-sm font-medium text-gray-500">Sexo</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {animal.idade} anos
+                {animal.sexo || 'Não informado'}
               </dd>
             </div>
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Status</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  animal.status === 'ativo'
+                  animal.status === AnimalStatus.ATIVO
                     ? 'bg-green-100 text-green-800'
-                    : animal.status === 'vendido'
+                    : animal.status === AnimalStatus.VENDIDO
                     ? 'bg-blue-100 text-blue-800'
                     : 'bg-red-100 text-red-800'
                 }`}>
-                  {animal.status.charAt(0).toUpperCase() + animal.status.slice(1)}
+                  {animal.status}
                 </span>
               </dd>
             </div>
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Data de Entrada</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {new Date(animal.dataEntrada).toLocaleDateString()}
+                {animal.dataEntrada instanceof Date 
+                  ? animal.dataEntrada.toLocaleDateString('pt-BR')
+                  : animal.dataEntrada?.toDate 
+                    ? animal.dataEntrada.toDate().toLocaleDateString('pt-BR')
+                    : typeof animal.dataEntrada === 'string'
+                      ? new Date(animal.dataEntrada).toLocaleDateString('pt-BR')
+                      : 'Data não informada'}
               </dd>
             </div>
-            {animal.dataSaida && (
+            {animal.dataNascimento && (
               <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Data de Saída</dt>
+                <dt className="text-sm font-medium text-gray-500">Data de Nascimento</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {new Date(animal.dataSaida).toLocaleDateString()}
+                  {animal.dataNascimento instanceof Date 
+                    ? animal.dataNascimento.toLocaleDateString('pt-BR')
+                    : animal.dataNascimento?.toDate 
+                      ? animal.dataNascimento.toDate().toLocaleDateString('pt-BR')
+                      : typeof animal.dataNascimento === 'string'
+                        ? new Date(animal.dataNascimento).toLocaleDateString('pt-BR')
+                        : 'Data não informada'}
                 </dd>
               </div>
             )}
@@ -208,13 +221,6 @@ export default function AnimalDetails() {
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        {incidente.foto && (
-                          <img
-                            src={incidente.foto}
-                            alt="Foto do incidente"
-                            className="h-12 w-12 rounded-lg object-cover"
-                          />
-                        )}
                         <div className="ml-4">
                           <p className="text-sm font-medium text-primary-600">
                             {incidente.tipo.charAt(0).toUpperCase() + incidente.tipo.slice(1)}
@@ -235,15 +241,16 @@ export default function AnimalDetails() {
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
                         <p className="flex items-center text-sm text-gray-500">
-                          {new Date(incidente.data).toLocaleDateString()}
+                          {incidente.data instanceof Date 
+                            ? incidente.data.toLocaleDateString('pt-BR')
+                            : incidente.data?.toDate 
+                              ? incidente.data.toDate().toLocaleDateString('pt-BR')
+                              : typeof incidente.data === 'string'
+                                ? new Date(incidente.data).toLocaleDateString('pt-BR')
+                                : 'Data não informada'}
                         </p>
                       </div>
                     </div>
-                    {incidente.observacoes && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-500">{incidente.observacoes}</p>
-                      </div>
-                    )}
                   </div>
                 </li>
               ))}
@@ -256,7 +263,7 @@ export default function AnimalDetails() {
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
         imageUrl={animal.foto || '/placeholder-animal.jpg'}
-        title={`Animal ${animal.brinco}`}
+        title={`Animal ${animal.numeroBrinco}`}
       />
     </div>
   )

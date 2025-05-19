@@ -1,295 +1,216 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { Animal, getAnimais } from '../services/firestore'
+import React, { useState, useEffect } from 'react'
+import { Animal, AnimalStatus } from '../types'
+import { storage } from '../services/firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { Timestamp } from 'firebase/firestore'
 
 interface AnimalFormProps {
-  onSubmit?: (animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) => void
-  onCancel?: () => void
-  initialData?: Partial<Animal>
+  onSubmit: (animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
+  onCancel: () => void
+  initialData?: Animal
 }
 
-const coresBrinco = [
-  { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
-  { id: 'verde', nome: 'Verde', cor: 'bg-green-500' },
-  { id: 'azul', nome: 'Azul', cor: 'bg-blue-500' },
-  { id: 'vermelho', nome: 'Vermelho', cor: 'bg-red-500' }
-]
-
-type AnimalFormState = {
-  numeroBrinco: string
-  corBrinco: 'amarelo' | 'verde' | 'azul' | 'vermelho'
-  dataEntrada: string // sempre string yyyy-mm-dd
-  raca: string
-  status: 'Ativo' | 'Vendido' | 'Abatido' | 'Morto'
-  foto: string
-  observacoes: string
-}
-
-export default function AnimalForm({ onSubmit, onCancel, initialData }: AnimalFormProps) {
-  const navigate = useNavigate()
-  const { id } = useParams()
+export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, initialData }) => {
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<AnimalFormState>({
-    numeroBrinco: initialData?.numeroBrinco || '',
-    corBrinco: (initialData?.corBrinco as AnimalFormState['corBrinco']) || 'amarelo',
-    dataEntrada: initialData?.dataEntrada ? 
-      (initialData.dataEntrada instanceof Date ? 
-        initialData.dataEntrada.toISOString().split('T')[0] : 
-        initialData.dataEntrada.toDate().toISOString().split('T')[0]) : 
-      new Date().toISOString().split('T')[0],
-    raca: initialData?.raca || '',
-    status: (initialData?.status as AnimalFormState['status']) || 'Ativo',
-    foto: initialData?.foto || '',
-    observacoes: initialData?.observacoes || ''
+  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState<Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>>({
+    numeroBrinco: '',
+    corBrinco: 'amarelo',
+    dataEntrada: new Date(),
+    dataNascimento: undefined,
+    raca: '',
+    sexo: undefined,
+    status: AnimalStatus.ATIVO,
+    observacoes: '',
+    foto: undefined
   })
-  const [erro, setErro] = useState('')
-  const [fotoPreview, setFotoPreview] = useState<string | undefined>(initialData?.foto)
 
   useEffect(() => {
-    if (id) {
-      loadAnimal()
+    if (initialData) {
+      setFormData({
+        numeroBrinco: String(initialData.numeroBrinco || ''),
+        corBrinco: initialData.corBrinco,
+        dataEntrada: initialData.dataEntrada instanceof Date ? initialData.dataEntrada : initialData.dataEntrada instanceof Timestamp ? initialData.dataEntrada.toDate() : new Date(initialData.dataEntrada),
+        dataNascimento: initialData.dataNascimento ? (initialData.dataNascimento instanceof Date ? initialData.dataNascimento : initialData.dataNascimento instanceof Timestamp ? initialData.dataNascimento.toDate() : new Date(initialData.dataNascimento)) : undefined,
+        raca: initialData.raca,
+        sexo: initialData.sexo,
+        status: initialData.status,
+        observacoes: initialData.observacoes || '',
+        foto: initialData.foto
+      })
     }
-  }, [id])
+  }, [initialData])
 
-  async function loadAnimal() {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
     try {
-      setLoading(true)
-      const animais = await getAnimais()
-      const data = animais.find(a => a.id === id)
-      if (data) {
-        setFormData({
-          numeroBrinco: data.numeroBrinco,
-          corBrinco: data.corBrinco as AnimalFormState['corBrinco'],
-          dataEntrada: data.dataEntrada ? 
-            (data.dataEntrada instanceof Date ? 
-              data.dataEntrada.toISOString().split('T')[0] : 
-              data.dataEntrada.toDate().toISOString().split('T')[0]) : 
-            new Date().toISOString().split('T')[0],
-          raca: data.raca,
-          status: data.status as AnimalFormState['status'],
-          foto: data.foto || '',
-          observacoes: data.observacoes || ''
-        })
-        setFotoPreview(data.foto)
+      const dataToSubmit = {
+        ...formData,
+        numeroBrinco: String(formData.numeroBrinco)
       }
-    } catch (error) {
-      console.error('Erro ao carregar animal:', error)
-      setErro('Erro ao carregar dados do animal')
+      await onSubmit(dataToSubmit)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar animal')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const base64String = reader.result as string
-        setFormData({ ...formData, foto: base64String })
-        setFotoPreview(base64String)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+    if (!file) return
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErro('')
     try {
-      if (onSubmit) {
-        const animalData: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'> = {
-          numeroBrinco: formData.numeroBrinco,
-          corBrinco: formData.corBrinco,
-          dataEntrada: Timestamp.fromDate(new Date(formData.dataEntrada)),
-          raca: formData.raca,
-          status: formData.status,
-          foto: formData.foto,
-          observacoes: formData.observacoes
-        }
-        await onSubmit(animalData)
-        navigate('/animais')
-      }
-    } catch (error) {
-      console.error('Erro ao salvar animal:', error)
-      setErro('Erro ao salvar dados do animal')
+      setLoading(true)
+      const storageRef = ref(storage, `animais/${Date.now()}_${file.name}`)
+      await uploadBytes(storageRef, file)
+      const url = await getDownloadURL(storageRef)
+      setFormData(prev => ({ ...prev, foto: url }))
+    } catch (err) {
+      setError('Erro ao fazer upload da foto')
+    } finally {
+      setLoading(false)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">
-        {id ? 'Editar Animal' : 'Novo Animal'}
-      </h1>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {erro && (
-          <div className="rounded-md bg-red-50 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">{erro}</h3>
-              </div>
-            </div>
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Número do Brinco</label>
+        <input
+          type="text"
+          value={formData.numeroBrinco}
+          onChange={e => setFormData(prev => ({ ...prev, numeroBrinco: e.target.value }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Cor do Brinco</label>
+        <select
+          value={formData.corBrinco}
+          onChange={e => setFormData(prev => ({ ...prev, corBrinco: e.target.value as 'amarelo' | 'verde' | 'azul' | 'vermelho' }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          required
+        >
+          <option value="amarelo">Amarelo</option>
+          <option value="verde">Verde</option>
+          <option value="azul">Azul</option>
+          <option value="vermelho">Vermelho</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Data de Entrada</label>
+        <input
+          type="date"
+          value={formData.dataEntrada instanceof Date ? formData.dataEntrada.toISOString().split('T')[0] : formData.dataEntrada instanceof Timestamp ? formData.dataEntrada.toDate().toISOString().split('T')[0] : new Date(formData.dataEntrada).toISOString().split('T')[0]}
+          onChange={e => setFormData(prev => ({ ...prev, dataEntrada: new Date(e.target.value) }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Data de Nascimento</label>
+        <input
+          type="date"
+          value={formData.dataNascimento ? (formData.dataNascimento instanceof Date ? formData.dataNascimento.toISOString().split('T')[0] : formData.dataNascimento instanceof Timestamp ? formData.dataNascimento.toDate().toISOString().split('T')[0] : new Date(formData.dataNascimento).toISOString().split('T')[0]) : ''}
+          onChange={e => setFormData(prev => ({ ...prev, dataNascimento: e.target.value ? new Date(e.target.value) : undefined }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Raça</label>
+        <input
+          type="text"
+          value={formData.raca}
+          onChange={e => setFormData(prev => ({ ...prev, raca: e.target.value }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          required
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Sexo</label>
+        <select
+          value={formData.sexo || ''}
+          onChange={e => setFormData(prev => ({ ...prev, sexo: e.target.value as 'M' | 'F' | undefined }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        >
+          <option value="">Selecione...</option>
+          <option value="M">Macho</option>
+          <option value="F">Fêmea</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Status</label>
+        <select
+          value={formData.status}
+          onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as AnimalStatus }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          required
+        >
+          {Object.values(AnimalStatus).map(status => (
+            <option key={status} value={status}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Foto</label>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="mt-1 block w-full"
+        />
+        {formData.foto && (
+          <img src={formData.foto} alt="Foto do animal" className="mt-2 h-32 w-32 object-cover rounded" />
         )}
+      </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="numeroBrinco" className="block text-sm font-medium text-gray-700">
-              Número do Brinco
-            </label>
-            <input
-              type="text"
-              id="numeroBrinco"
-              value={formData.numeroBrinco}
-              onChange={e => setFormData({ ...formData, numeroBrinco: e.target.value })}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              required
-            />
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Observações</label>
+        <textarea
+          value={formData.observacoes}
+          onChange={e => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          rows={3}
+        />
+      </div>
 
-          <div>
-            <label htmlFor="corBrinco" className="block text-sm font-medium text-gray-700">
-              Cor do Brinco
-            </label>
-            <select
-              id="corBrinco"
-              value={formData.corBrinco}
-              onChange={e => setFormData({ ...formData, corBrinco: e.target.value as AnimalFormState['corBrinco'] })}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              required
-            >
-              {coresBrinco.map(cor => (
-                <option key={cor.id} value={cor.id}>
-                  {cor.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="dataEntrada" className="block text-sm font-medium text-gray-700">
-              Data de Entrada
-            </label>
-            <input
-              type="date"
-              id="dataEntrada"
-              value={formData.dataEntrada}
-              onChange={e => setFormData({ ...formData, dataEntrada: e.target.value })}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="raca" className="block text-sm font-medium text-gray-700">
-              Raça
-            </label>
-            <input
-              type="text"
-              id="raca"
-              value={formData.raca}
-              onChange={e => setFormData({ ...formData, raca: e.target.value })}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-              Status
-            </label>
-            <select
-              id="status"
-              value={formData.status}
-              onChange={e => setFormData({ ...formData, status: e.target.value as AnimalFormState['status'] })}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-            >
-              <option value="Ativo">Ativo</option>
-              <option value="Vendido">Vendido</option>
-              <option value="Abatido">Abatido</option>
-              <option value="Morto">Morto</option>
-            </select>
-          </div>
-
-          <div className="col-span-2">
-            <label htmlFor="foto" className="block text-sm font-medium text-gray-700">
-              Foto do Animal
-            </label>
-            <div className="mt-1 flex items-center space-x-4">
-              <input
-                type="file"
-                id="foto"
-                accept="image/*"
-                onChange={handleFotoChange}
-                className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              />
-              {fotoPreview && (
-                <div className="relative w-20 h-20">
-                  <img
-                    src={fotoPreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-md"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData({ ...formData, foto: '' })
-                      setFotoPreview(undefined)
-                    }}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="col-span-2">
-            <label htmlFor="observacoes" className="block text-sm font-medium text-gray-700">
-              Observações
-            </label>
-            <textarea
-              id="observacoes"
-              value={formData.observacoes}
-              onChange={e => setFormData({ ...formData, observacoes: e.target.value })}
-              rows={3}
-              className="block w-full px-3 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-end space-x-3">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              Cancelar
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-          >
-            {loading ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-      </form>
-    </div>
+      <div className="flex justify-end space-x-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+          disabled={loading}
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          disabled={loading}
+        >
+          {loading ? 'Salvando...' : 'Salvar'}
+        </button>
+      </div>
+    </form>
   )
 } 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { addVacina, getAnimais, Vacina, Animal } from '../services/firestore'
+import { addVacina, getAnimais, Vacina } from '../services/firestore'
+import { Animal } from '../types'
 
 export default function VacinaForm() {
   const navigate = useNavigate()
@@ -91,8 +92,8 @@ export default function VacinaForm() {
           >
             <option value="">Selecione o brinco</option>
             {animais.map(animal => (
-              <option key={animal.brinco} value={animal.brinco}>
-                {animal.brinco} - {animal.raca}
+              <option key={animal.numeroBrinco} value={animal.numeroBrinco}>
+                {animal.numeroBrinco} - {animal.raca}
               </option>
             ))}
           </select>
