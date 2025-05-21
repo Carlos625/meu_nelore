@@ -1,64 +1,42 @@
-import { Animal } from '../types/animal'
-import { db } from './indexedDB'
+import { addAnimal, getAnimais, updateAnimal, deleteAnimal } from './firestore'
+import { Animal, AnimalStatus } from '../types'
 
 export const animalService = {
-  async getAll(): Promise<Animal[]> {
+  async addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
-      const animais = await db.animais.toArray()
+      const newAnimal = await addAnimal(animal)
+      return newAnimal
+    } catch (error) {
+      console.error('Erro ao adicionar animal:', error)
+      throw error
+    }
+  },
+
+  async getAnimais() {
+    try {
+      const animais = await getAnimais()
       return animais
     } catch (error) {
       console.error('Erro ao buscar animais:', error)
-      return []
+      throw error
     }
   },
 
-  async getByBrinco(brinco: number): Promise<Animal | undefined> {
+  async updateAnimal(id: string, animal: Partial<Animal>) {
     try {
-      const animal = await db.animais.get(brinco)
-      return animal
-    } catch (error) {
-      console.error('Erro ao buscar animal:', error)
-      return undefined
-    }
-  },
-
-  async create(animal: Omit<Animal, 'id'>): Promise<Animal | undefined> {
-    try {
-      const id = await db.animais.add(animal)
-      return { ...animal, id }
-    } catch (error) {
-      console.error('Erro ao criar animal:', error)
-      return undefined
-    }
-  },
-
-  async update(brinco: number, animal: Partial<Animal>): Promise<boolean> {
-    try {
-      await db.animais.update(brinco, animal)
-      return true
+      await updateAnimal(id, animal)
     } catch (error) {
       console.error('Erro ao atualizar animal:', error)
-      return false
+      throw error
     }
   },
 
-  async delete(brinco: number): Promise<boolean> {
+  async deleteAnimal(id: string) {
     try {
-      await db.animais.delete(brinco)
-      return true
+      await deleteAnimal(id)
     } catch (error) {
       console.error('Erro ao deletar animal:', error)
-      return false
-    }
-  },
-
-  async getById(id: number): Promise<Animal | undefined> {
-    try {
-      const animal = await db.animais.get(id)
-      return animal
-    } catch (error) {
-      console.error('Erro ao buscar animal por id:', error)
-      return undefined
+      throw error
     }
   }
 } 

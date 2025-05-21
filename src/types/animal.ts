@@ -3,7 +3,7 @@ export type AnimalStatus = 'ativo' | 'vendido' | 'abatido' | 'morto'
 export interface Animal {
   id: number
   brinco: number
-  corBrinco: 'azul' | 'verde' | 'amarelo'
+  corBrinco: 'azul' | 'verde' | 'amarelo' | 'vermelho'
   raca: string
   idade: number
   status: AnimalStatus

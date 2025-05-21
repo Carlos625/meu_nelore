@@ -1,67 +1,52 @@
-import { Incidente } from '../types/incidente'
-import { db } from './indexedDB'
+import { addIncidente, getIncidentes, getAllIncidentes, updateIncidente, deleteIncidente } from './firestore'
+import { Incidente } from '../types'
 
 export const incidenteService = {
-  async getAll(): Promise<Incidente[]> {
+  async addIncidente(incidente: Omit<Incidente, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
-      const incidentes = await db.incidentes.toArray()
+      const newIncidente = await addIncidente(incidente)
+      return newIncidente
+    } catch (error) {
+      console.error('Erro ao adicionar incidente:', error)
+      throw error
+    }
+  },
+
+  async getIncidentes(animalId: string) {
+    try {
+      const incidentes = await getIncidentes(animalId)
       return incidentes
     } catch (error) {
       console.error('Erro ao buscar incidentes:', error)
-      return []
+      throw error
     }
   },
 
-  async getByAnimalId(animalId: number): Promise<Incidente[]> {
+  async getAllIncidentes() {
     try {
-      const incidentes = await db.incidentes
-        .where('animalId')
-        .equals(animalId)
-        .toArray()
+      const incidentes = await getAllIncidentes()
       return incidentes
     } catch (error) {
-      console.error('Erro ao buscar incidentes do animal:', error)
-      return []
+      console.error('Erro ao buscar todos os incidentes:', error)
+      throw error
     }
   },
 
-  async getById(id: number): Promise<Incidente | undefined> {
+  async updateIncidente(id: string, incidente: Partial<Incidente>) {
     try {
-      const incidente = await db.incidentes.get(id)
-      return incidente
-    } catch (error) {
-      console.error('Erro ao buscar incidente:', error)
-      return undefined
-    }
-  },
-
-  async create(incidente: Omit<Incidente, 'id'>): Promise<Incidente | undefined> {
-    try {
-      const id = await db.incidentes.add(incidente)
-      return { ...incidente, id }
-    } catch (error) {
-      console.error('Erro ao criar incidente:', error)
-      return undefined
-    }
-  },
-
-  async update(id: number, incidente: Partial<Incidente>): Promise<boolean> {
-    try {
-      await db.incidentes.update(id, incidente)
-      return true
+      await updateIncidente(id, incidente)
     } catch (error) {
       console.error('Erro ao atualizar incidente:', error)
-      return false
+      throw error
     }
   },
 
-  async delete(id: number): Promise<boolean> {
+  async deleteIncidente(id: string) {
     try {
-      await db.incidentes.delete(id)
-      return true
+      await deleteIncidente(id)
     } catch (error) {
       console.error('Erro ao deletar incidente:', error)
-      return false
+      throw error
     }
   }
 } 

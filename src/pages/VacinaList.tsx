@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { getVacinas, getAnimais, Vacina, Animal, addVacina } from '../services/firestore'
+import { getVacinas, getAnimais, Vacina, addVacina } from '../services/firestore'
+import { Animal } from '../types'
 import { Link } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { Timestamp } from 'firebase/firestore'
 
-function getStatusVacina(dataProxima: string | Date | undefined) {
+function getStatusVacina(dataProxima: Date | Timestamp | undefined) {
   if (!dataProxima) return 'vencida'
   const hoje = new Date()
-  const proxima = new Date(dataProxima)
+  const proxima = dataProxima instanceof Timestamp ? dataProxima.toDate() : dataProxima
   const diff = (proxima.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24)
   if (diff < 0) return 'vencida'
   if (diff <= 15) return 'proxima'
@@ -60,7 +62,11 @@ export default function VacinaList() {
   // Mapear última vacina por animal
   const vacinasPorAnimal = animais.map(animal => {
     const historico = vacinas.filter(v => String(v.animalBrinco) === String(animal.numeroBrinco))
-    const ultima = historico.sort((a, b) => new Date(b.dataAplicacao).getTime() - new Date(a.dataAplicacao).getTime())[0]
+    const ultima = historico.sort((a, b) => {
+      const dataA = a.dataAplicacao instanceof Timestamp ? a.dataAplicacao.toDate() : a.dataAplicacao
+      const dataB = b.dataAplicacao instanceof Timestamp ? b.dataAplicacao.toDate() : b.dataAplicacao
+      return dataB.getTime() - dataA.getTime()
+    })[0]
     return {
       animal,
       ultimaVacina: ultima
@@ -194,9 +200,17 @@ export default function VacinaList() {
                     }>
                       <td className="px-4 py-2 font-mono">{animal.numeroBrinco}</td>
                       <td className="px-4 py-2">{animal.raca}</td>
-                      <td className="px-4 py-2">{ultimaVacina ? (ultimaVacina.dataAplicacao ? new Date(ultimaVacina.dataAplicacao).toLocaleDateString() : '-') : '-'}</td>
+                      <td className="px-4 py-2">{ultimaVacina ? (
+                        ultimaVacina.dataAplicacao instanceof Timestamp 
+                          ? ultimaVacina.dataAplicacao.toDate().toLocaleDateString()
+                          : ultimaVacina.dataAplicacao.toLocaleDateString()
+                      ) : '-'}</td>
                       <td className="px-4 py-2">{ultimaVacina ? ultimaVacina.nome : '-'}</td>
-                      <td className="px-4 py-2">{ultimaVacina ? (ultimaVacina.dataProxima ? new Date(ultimaVacina.dataProxima).toLocaleDateString() : '-') : '-'}</td>
+                      <td className="px-4 py-2">{ultimaVacina ? (
+                        ultimaVacina.dataProxima instanceof Timestamp
+                          ? ultimaVacina.dataProxima.toDate().toLocaleDateString()
+                          : ultimaVacina.dataProxima?.toLocaleDateString() || '-'
+                      ) : '-'}</td>
                       <td className="px-4 py-2">
                         {status === 'em-dia' && <span className="px-2 py-1 rounded bg-green-100 text-green-800 text-xs">Em dia</span>}
                         {status === 'proxima' && <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800 text-xs">Próxima</span>}

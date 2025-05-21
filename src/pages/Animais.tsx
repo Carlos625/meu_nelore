@@ -46,6 +46,14 @@ export default function Animais() {
     }
   }
 
+  const coresBrinco = [
+    { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
+    { id: 'verde', nome: 'Verde', cor: 'bg-green-500' },
+    { id: 'azul', nome: 'Azul', cor: 'bg-blue-500' },
+    { id: 'vermelho', nome: 'Vermelho', cor: 'bg-red-500' }
+  ]
+
+
   const handleSalvarAnimal = async (animalData: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       console.log('Iniciando salvamento do animal...', JSON.stringify(animalData, null, 2))
@@ -216,7 +224,9 @@ export default function Animais() {
             {animaisPaginados.map(animal => (
               <tr key={animal.id}>
                 <td className="px-6 py-4 whitespace-nowrap">{animal.numeroBrinco || ''}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{animal.corBrinco || ''}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className={`w-4 h-4 rounded-full ${coresBrinco.find(cor => cor.id === animal.corBrinco)?.cor || 'bg-gray-300'}`}></div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {animal.dataEntrada instanceof Timestamp 
                     ? animal.dataEntrada.toDate().toLocaleDateString('pt-BR')

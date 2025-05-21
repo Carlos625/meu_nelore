@@ -8,7 +8,7 @@ import Login from './pages/Login'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const AnimalList = lazy(() => import('./pages/AnimalList'))
-const AnimalFormPage = lazy(() => import('./pages/AnimalFormPage'))
+const AnimalFormPage = lazy(() => import('./pages/AnimalFormPage').then(module => ({ default: module.AnimalFormPage })))
 const AnimalDetails = lazy(() => import('./pages/AnimalDetails'))
 const IncidentList = lazy(() => import('./pages/IncidentList'))
 const IncidentForm = lazy(() => import('./pages/IncidentForm'))

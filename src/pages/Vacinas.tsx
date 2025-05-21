@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Vacina, Animal, getVacinas, addVacina, getAnimais } from '../services/firestore'
-import { Timestamp } from 'firebase/firestore'
+import { getAnimais } from '../services/firestore'
+import { Animal } from '../types'
+
+interface Vacina {
+  id: string
+  animalBrinco: string
+  nome: string
+  dataAplicacao: Date | string
+  dataProxima: Date | string
+  observacoes?: string
+}
 
 export default function Vacinas() {
   const [vacinas, setVacinas] = useState<Vacina[]>([])
@@ -22,12 +31,9 @@ export default function Vacinas() {
   async function carregarDados() {
     try {
       setLoading(true)
-      const [dadosVacinas, dadosAnimais] = await Promise.all([
-        getVacinas(''),
-        getAnimais()
-      ])
-      setVacinas(dadosVacinas)
+      const dadosAnimais = await getAnimais()
       setAnimais(dadosAnimais)
+      // TODO: Implementar carregamento de vacinas
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
       setErro('Erro ao carregar dados')
@@ -44,15 +50,7 @@ export default function Vacinas() {
         dataAplicacao: new Date(novoVacina.dataAplicacao),
         dataProxima: novoVacina.dataProxima ? new Date(novoVacina.dataProxima) : undefined
       }
-      await addVacina(vacinaData)
-      setNovoVacina({
-        animalBrinco: '',
-        nome: '',
-        dataAplicacao: '',
-        dataProxima: '',
-        observacoes: ''
-      })
-      carregarDados()
+      // TODO: Implementar adição de nova vacina
     } catch (error) {
       console.error('Erro ao adicionar vacina:', error)
       setErro('Erro ao adicionar vacina')
@@ -86,8 +84,8 @@ export default function Vacinas() {
             >
               <option value="">Selecione um animal</option>
               {animais.map(animal => (
-                <option key={animal.id} value={animal.brinco}>
-                  {animal.brinco} - {animal.nome || 'Sem nome'}
+                <option key={animal.numeroBrinco} value={animal.numeroBrinco}>
+                  {animal.numeroBrinco} - {animal.raca || 'Sem nome'}
                 </option>
               ))}
             </select>
@@ -148,36 +146,32 @@ export default function Vacinas() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Animal</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vacina</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Aplicação</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Próxima</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Próxima Dose</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observações</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {vacinas.map(vacina => {
-              const animal = animais.find(a => a.brinco === vacina.animalBrinco)
+              const animal = animais.find(a => a.numeroBrinco === vacina.animalBrinco)
               return (
                 <tr key={vacina.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {animal ? `${animal.brinco} - ${animal.nome || 'Sem nome'}` : 'Animal não encontrado'}
+                    {animal ? `${animal.numeroBrinco} - ${animal.raca || 'Sem nome'}` : 'Animal não encontrado'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{vacina.nome || 'Não informado'}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {vacina.dataAplicacao instanceof Date 
                       ? vacina.dataAplicacao.toLocaleDateString('pt-BR')
-                      : vacina.dataAplicacao?.toDate 
-                        ? vacina.dataAplicacao.toDate().toLocaleDateString('pt-BR')
-                        : typeof vacina.dataAplicacao === 'string'
-                          ? new Date(vacina.dataAplicacao).toLocaleDateString('pt-BR')
-                          : 'Data não informada'}
+                      : typeof vacina.dataAplicacao === 'string'
+                        ? new Date(vacina.dataAplicacao).toLocaleDateString('pt-BR')
+                        : 'Data não informada'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {vacina.dataProxima instanceof Date 
                       ? vacina.dataProxima.toLocaleDateString('pt-BR')
-                      : vacina.dataProxima?.toDate 
-                        ? vacina.dataProxima.toDate().toLocaleDateString('pt-BR')
-                        : typeof vacina.dataProxima === 'string'
-                          ? new Date(vacina.dataProxima).toLocaleDateString('pt-BR')
-                          : 'Não agendada'}
+                      : typeof vacina.dataProxima === 'string'
+                        ? new Date(vacina.dataProxima).toLocaleDateString('pt-BR')
+                        : 'Data não informada'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{vacina.observacoes || '-'}</td>
                 </tr>

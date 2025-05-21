@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { incidenteService, animalService } from '../services'
+import { getAllIncidentes, getAnimais } from '../services/firestore'
 import { Incidente } from '../types/incidente'
 import { Animal } from '../types/animal'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
@@ -20,18 +21,12 @@ export default function IncidentList() {
   async function loadData() {
     try {
       setLoading(true)
-      const [incidentesData, animaisData] = await Promise.all([
-        incidenteService.getAll(),
-        animalService.getAll()
-      ])
-      setIncidentes(incidentesData)
-      
-      // Criar um mapa de animais por ID para fácil acesso
-      const animaisMap = animaisData.reduce((acc, animal) => {
-        acc[animal.id] = animal
-        return acc
-      }, {} as Record<string, Animal>)
-      setAnimais(animaisMap)
+      const data = await getAllIncidentes()
+      const animaisData = await getAnimais()
+      setAnimais(animaisData)
+      console.log(data)
+      console.log(animais)
+      setIncidentes(data as unknown as Incidente[])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {

@@ -30,6 +30,20 @@ export default function AnimalList() {
     }
   }
 
+  const coresBrinco = [
+    { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
+    { id: 'verde', nome: 'Verde', cor: 'bg-green-500' },
+    { id: 'azul', nome: 'Azul', cor: 'bg-blue-500' },
+    { id: 'vermelho', nome: 'Vermelho', cor: 'bg-red-500' }
+  ]
+
+  const coresStatus = [
+    { id: 'ativo', nome: 'Ativo', cor: 'bg-green-500' },
+    { id: 'vendido', nome: 'Vendido', cor: 'bg-blue-500' },
+    { id: 'abatido', nome: 'Abatido', cor: 'bg-red-500' },
+    { id: 'morto', nome: 'Morto', cor: 'bg-gray-500' }
+  ]
+
   const animaisFiltrados = animais.filter(animal => {
     if (!animal) return false
 
@@ -163,24 +177,18 @@ export default function AnimalList() {
                         <p className="text-sm font-medium text-primary-600 flex items-center gap-2">
                           Brinco {String(animal.numeroBrinco || '')}
                           <span className={`inline-block w-3 h-3 rounded-full ${
-                            animal.corBrinco === 'azul' ? 'bg-blue-500' : animal.corBrinco === 'verde' ? 'bg-green-500' : 'bg-yellow-400'
+                            coresBrinco.find(cor => cor.id === animal.corBrinco)?.cor || 'bg-gray-300'
                           }`} title={animal.corBrinco || ''}></span>
-                          <span className="text-xs text-gray-500 capitalize">{animal.corBrinco || ''}</span>
+                          <span className="text-xs text-gray-500 capitalize">{coresBrinco.find(cor => cor.id === animal.corBrinco)?.nome || ''}</span>
                         </p>
                         <p className="text-sm text-gray-500">{animal.raca || ''}</p>
                       </div>
                     </div>
                     <div className="ml-2 flex-shrink-0 flex">
                       <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        animal.status === 'ativo'
-                          ? 'bg-green-100 text-green-800'
-                          : animal.status === 'vendido'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-red-100 text-red-800'
+                        coresStatus.find(cor => cor.id === animal.status)?.cor || 'bg-gray-300'
                       }`}>
-                        {typeof animal.status === 'string' 
-                          ? animal.status.charAt(0).toUpperCase() + animal.status.slice(1)
-                          : 'Status Desconhecido'}
+                        {coresStatus.find(cor => cor.id === animal.status)?.nome || 'Status Desconhecido'}
                       </p>
                     </div>
                   </div>

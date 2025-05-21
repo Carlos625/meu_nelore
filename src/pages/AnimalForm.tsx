@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react'
 import { Animal, AnimalStatus } from '../types'
 import { storage } from '../services/firebase'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { Timestamp } from 'firebase/firestore'
+import { addAnimal } from '../services/firestore'
+import { useNavigate } from 'react-router-dom'
 
 interface AnimalFormProps {
   onSubmit: (animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
   onCancel: () => void
   initialData?: Animal
 }
+
+const navigate = useNavigate()
+
+const coresBrinco = [
+  { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
+  { id: 'verde', nome: 'Verde', cor: 'bg-green-500' },
+  { id: 'azul', nome: 'Azul', cor: 'bg-blue-500' },
+  { id: 'vermelho', nome: 'Vermelho', cor: 'bg-red-500' }
+]
 
 export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, initialData }) => {
   const [loading, setLoading] = useState(false)
@@ -41,17 +52,16 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
     }
   }, [initialData])
 
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-
+    console.log('formData:', formData)
     try {
-      const dataToSubmit = {
-        ...formData,
-        numeroBrinco: String(formData.numeroBrinco)
-      }
-      await onSubmit(dataToSubmit)
+      await addAnimal(formData)
+      navigate('/animais')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar animal')
     } finally {
@@ -66,6 +76,7 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
     try {
       setLoading(true)
       const storageRef = ref(storage, `animais/${Date.now()}_${file.name}`)
+      console.log('uploadBytes:', uploadBytes.toString())
       await uploadBytes(storageRef, file)
       const url = await getDownloadURL(storageRef)
       setFormData(prev => ({ ...prev, foto: url }))
@@ -103,10 +114,11 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
           required
         >
-          <option value="amarelo">Amarelo</option>
-          <option value="verde">Verde</option>
-          <option value="azul">Azul</option>
-          <option value="vermelho">Vermelho</option>
+          {coresBrinco.map(cor => (
+            <option key={cor.id} value={cor.id}>
+              {cor.nome}
+            </option>
+          ))}
         </select>
       </div>
 

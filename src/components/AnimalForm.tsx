@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 const coresBrinco = [
   { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
   { id: 'verde', nome: 'Verde', cor: 'bg-green-500' },
@@ -5,10 +7,24 @@ const coresBrinco = [
   { id: 'vermelho', nome: 'Vermelho', cor: 'bg-red-500' }
 ] 
 
-return (
-  <form onSubmit={handleSubmit} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
+
+
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault()
+}
+
+const [formData, setFormData] = useState({
+  numeroBrinco: '',
+  corBrinco: 'amarelo'
+})
+
+
+
+export const AnimalForm = () => {
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
         <label className="block text-sm font-medium text-gray-700">Número do Brinco</label>
         <input
           type="text"
@@ -36,3 +52,4 @@ return (
     </div>
   </form>
 ) 
+}

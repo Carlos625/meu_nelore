@@ -10,12 +10,6 @@ interface BrincoModalProps {
 export default function BrincoModal({ isOpen, onClose, onSave, quantidadeAtual }: BrincoModalProps) {
   const [quantidade, setQuantidade] = useState(quantidadeAtual)
 
-  const coresBrinco = [
-    { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
-    { id: 'verde', nome: 'Verde', cor: 'bg-green-500' },
-    { id: 'azul', nome: 'Azul', cor: 'bg-blue-500' },
-    { id: 'vermelho', nome: 'Vermelho', cor: 'bg-red-500' }
-  ]
 
   if (!isOpen) return null
 
