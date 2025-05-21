@@ -12,7 +12,6 @@ interface AnimalFormProps {
   initialData?: Animal
 }
 
-const navigate = useNavigate()
 
 const coresBrinco = [
   { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
@@ -22,6 +21,7 @@ const coresBrinco = [
 ]
 
 export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, initialData }) => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>>({
@@ -35,7 +35,7 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
     observacoes: '',
     foto: undefined
   })
-
+  
   useEffect(() => {
     if (initialData) {
       setFormData({
