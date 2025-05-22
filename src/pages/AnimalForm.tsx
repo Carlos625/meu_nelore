@@ -21,8 +21,8 @@ const coresBrinco = [
 ]
 
 export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, initialData }) => {
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>>({
     numeroBrinco: '',
@@ -72,16 +72,18 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-
+  
     try {
       setLoading(true)
-      const storageRef = ref(storage, `animais/${Date.now()}_${file.name}`)
-      console.log('uploadBytes:', uploadBytes.toString())
-      await uploadBytes(storageRef, file)
-      const url = await getDownloadURL(storageRef)
-      setFormData(prev => ({ ...prev, foto: url }))
+  
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64String = reader.result as string
+        setFormData(prev => ({ ...prev, foto: base64String }))
+      }
+      reader.readAsDataURL(file)
     } catch (err) {
-      setError('Erro ao fazer upload da foto')
+      setError('Erro ao converter a imagem')
     } finally {
       setLoading(false)
     }

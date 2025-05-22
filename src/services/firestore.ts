@@ -86,6 +86,7 @@ export async function getAnimal(id: string): Promise<Animal> {
 export async function addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) {
   try {
     console.log('Iniciando adição do animal:', animal)
+
     const animalData = {
       ...animal,
       numeroBrinco: animal.numeroBrinco.toString(),
@@ -94,6 +95,14 @@ export async function addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updat
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     }
+
+    // Remove campos com `undefined` (Firestore não aceita)
+    Object.keys(animalData).forEach((key) => {
+      if (animalData[key as keyof typeof animalData] === undefined) {
+        delete animalData[key as keyof typeof animalData]
+      }
+    })
+
     const docRef = await addDoc(collection(db, 'animais'), animalData)
     console.log('Animal adicionado com sucesso! ID:', docRef.id)
     return docRef.id
