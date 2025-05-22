@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FaTag } from 'react-icons/fa'
 import { FaCow, FaArrowRightToBracket, FaArrowRightFromBracket } from 'react-icons/fa6'
-import { getAnimais, getVacinas, getIncidentes, getConfiguracao, updateConfiguracao } from '../services/firestore'
+import { getAnimais, getVacinas, getIncidentes, getConfiguracao, updateConfiguracao, getAllVacinas, getAllIncidentes } from '../services/firestore'
 import { Timestamp } from 'firebase/firestore'
 import LoadingSpinner from '../components/LoadingSpinner'
 import BrincoModal from '../components/BrincoModal'
@@ -33,8 +33,8 @@ const Dashboard = () => {
     try {
       const [animais, vacinas, incidentes, config] = await Promise.all([
         getAnimais(),
-        getVacinas(''),
-        getIncidentes(''),
+        getAllVacinas(),
+        getAllIncidentes(),
         getConfiguracao()
       ])
 

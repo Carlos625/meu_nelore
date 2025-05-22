@@ -286,6 +286,40 @@ export async function getVacinas(animalBrinco: string) {
   }
 }
 
+export async function getAllVacinas() {
+  try {
+    const q = query(
+      vacinasCollection,
+      orderBy('dataAplicacao', 'desc')
+    )
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data()
+      return {
+        id: doc.id,
+        animalBrinco: data.animalBrinco,
+        nome: data.nome,
+        dataAplicacao: toDate(data.dataAplicacao) || new Date(),
+        dataProxima: toDate(data.dataProxima),
+        observacoes: data.observacoes,
+        createdAt: toDate(data.createdAt) || new Date(),
+        updatedAt: toDate(data.updatedAt) || new Date()
+      } as Vacina
+    })
+  } catch (error) {
+    console.error('Erro ao buscar vacinas:', error)
+    throw error
+  }
+}
+
+export async function getVacinasByAnimalBrinco(animalBrinco: string) {
+  const q = query(vacinasCollection, where('animalBrinco', '==', animalBrinco))
+  const querySnapshot = await getDocs(q)
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as Vacina[]
+}
 // Funções para Configurações
 export const configuracoesCollection = collection(db, 'configuracoes')
 
