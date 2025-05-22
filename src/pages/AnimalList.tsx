@@ -186,9 +186,9 @@ export default function AnimalList() {
                     </div>
                     <div className="ml-2 flex-shrink-0 flex">
                       <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        coresStatus.find(cor => cor.id == animal.status)?.cor || 'bg-gray-300'
+                        coresStatus.find(cor => cor.id === animal.status.toLowerCase())?.cor || 'bg-gray-300'
                       }`}>
-                        {coresStatus.find(cor => cor.id == animal.status)?.nome || 'Status Desconhecido'}
+                        {coresStatus.find(cor => cor.id === animal.status.toLowerCase())?.nome || 'Status Desconhecido'}
                       </p>
                     </div>
                   </div>
