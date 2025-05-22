@@ -112,17 +112,25 @@ export async function addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updat
   }
 }
 
-export async function updateAnimal(id: string, data: Partial<Animal>) {
+export async function updateAnimal(id: string, animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) {
   try {
-    const animalRef = doc(db, 'animais', id)
-    const updateData = {
-      ...data,
-      numeroBrinco: data.numeroBrinco?.toString(),
-      dataEntrada: data.dataEntrada ? toTimestamp(data.dataEntrada) : undefined,
-      dataNascimento: data.dataNascimento ? toTimestamp(data.dataNascimento) : undefined,
+    const animalData = {
+      ...animal,
+      numeroBrinco: animal.numeroBrinco.toString(),
+      dataEntrada: animal.dataEntrada ? Timestamp.fromDate(new Date(animal.dataEntrada)) : null,
+      dataNascimento: animal.dataNascimento ? Timestamp.fromDate(new Date(animal.dataNascimento)) : null,
       updatedAt: Timestamp.now()
     }
-    await updateDoc(animalRef, updateData)
+
+    Object.keys(animalData).forEach((key) => {
+      if (animalData[key as keyof typeof animalData] === undefined) {
+        delete animalData[key as keyof typeof animalData]
+      }
+    })
+
+    const docRef = doc(db, 'animais', id)
+    await updateDoc(docRef, animalData)
+    console.log('Animal atualizado com sucesso!')
   } catch (error) {
     console.error('Erro ao atualizar animal:', error)
     throw error

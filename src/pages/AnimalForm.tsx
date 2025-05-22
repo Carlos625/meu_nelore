@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Animal, AnimalStatus } from '../types'
-import { storage } from '../services/firebase'
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { Timestamp } from 'firebase/firestore'
-import { addAnimal } from '../services/firestore'
+import { addAnimal, updateAnimal } from '../services/firestore'
 import { useNavigate } from 'react-router-dom'
 
 interface AnimalFormProps {
@@ -58,9 +56,15 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
     e.preventDefault()
     setLoading(true)
     setError(null)
-    console.log('formData:', formData)
+  
     try {
-      await addAnimal(formData)
+      if (initialData?.id) {
+        // Atualiza
+        await updateAnimal(initialData.id, formData)
+      } else {
+        // Cria novo
+        await addAnimal(formData)
+      }
       navigate('/animais')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar animal')
