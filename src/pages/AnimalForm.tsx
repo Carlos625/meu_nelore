@@ -10,8 +10,11 @@ interface AnimalFormProps {
   initialData?: Animal
 }
 
+// Função para verificar se é uma data válida
+const isValidDate = (d: any): d is Date => d instanceof Date && !isNaN(d.getTime())
+
 const formatDate = (date: Date | undefined): string => {
-  if (!date) return ''
+  if (!date || !isValidDate(date)) return ''
   return date.toISOString().split('T')[0]
 }
 
@@ -37,14 +40,21 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
     observacoes: '',
     foto: undefined
   })
-  
+
   useEffect(() => {
     if (initialData) {
+      const parseDate = (input: any): Date | undefined => {
+        if (input instanceof Date) return input
+        if (input instanceof Timestamp) return input.toDate()
+        const parsed = new Date(input)
+        return isValidDate(parsed) ? parsed : undefined
+      }
+
       setFormData({
         numeroBrinco: String(initialData.numeroBrinco || ''),
         corBrinco: initialData.corBrinco,
-        dataEntrada: initialData.dataEntrada instanceof Date ? initialData.dataEntrada : initialData.dataEntrada instanceof Timestamp ? initialData.dataEntrada.toDate() : new Date(initialData.dataEntrada),
-        dataNascimento: initialData.dataNascimento ? (initialData.dataNascimento instanceof Date ? initialData.dataNascimento : initialData.dataNascimento instanceof Timestamp ? initialData.dataNascimento.toDate() : new Date(initialData.dataNascimento)) : undefined,
+        dataEntrada: parseDate(initialData.dataEntrada) || new Date(),
+        dataNascimento: initialData.dataNascimento ? parseDate(initialData.dataNascimento) : undefined,
         raca: initialData.raca,
         sexo: initialData.sexo,
         status: initialData.status,
@@ -54,19 +64,15 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
     }
   }, [initialData])
 
-
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-  
+
     try {
       if (initialData?.id) {
-        // Atualiza
         await updateAnimal(initialData.id, formData)
       } else {
-        // Cria novo
         await addAnimal(formData)
       }
       navigate('/animais')
@@ -80,10 +86,10 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-  
+
     try {
       setLoading(true)
-  
+
       const reader = new FileReader()
       reader.onloadend = () => {
         const base64String = reader.result as string
@@ -133,35 +139,35 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
       </div>
 
       <div>
-      <label className="block text-sm font-medium text-gray-700">Data de Entrada</label>
-      <input
-        type="date"
-        value={formatDate(formData.dataEntrada)}
-        onChange={e =>
-          setFormData(prev => ({
-            ...prev,
-            dataEntrada: new Date(e.target.value) // armazenar como Date novamente
-          }))
-        }
-        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-        required
-      />
-    </div>
+        <label className="block text-sm font-medium text-gray-700">Data de Entrada</label>
+        <input
+          type="date"
+          value={formatDate(formData.dataEntrada)}
+          onChange={e =>
+            setFormData(prev => ({
+              ...prev,
+              dataEntrada: new Date(e.target.value)
+            }))
+          }
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+          required
+        />
+      </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700">Data de Nascimento</label>
-      <input
-        type="date"
-        value={formatDate(formData.dataNascimento)}
-        onChange={e =>
-          setFormData(prev => ({
-            ...prev,
-            dataNascimento: new Date(e.target.value)
-          }))
-        }
-        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-      />
-    </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Data de Nascimento</label>
+        <input
+          type="date"
+          value={formatDate(formData.dataNascimento)}
+          onChange={e =>
+            setFormData(prev => ({
+              ...prev,
+              dataNascimento: new Date(e.target.value)
+            }))
+          }
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        />
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Raça</label>
@@ -212,7 +218,7 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
           className="mt-1 block w-full"
         />
         {formData.foto && (
-          <img src={formData.foto} alt="Foto do animal" className="mt-2 h-32 w-32 object-cover rounded" />
+          <img src={formData.foto} alt="Preview" className="mt-2 max-h-48 rounded-md" />
         )}
       </div>
 
@@ -226,23 +232,22 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
         />
       </div>
 
-      <div className="flex justify-end space-x-3">
+      <div className="flex justify-end space-x-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-          disabled={loading}
+          className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
         >
           Cancelar
         </button>
         <button
           type="submit"
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           disabled={loading}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
           {loading ? 'Salvando...' : 'Salvar'}
         </button>
       </div>
     </form>
   )
-} 
+}
