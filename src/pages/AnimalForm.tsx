@@ -10,6 +10,10 @@ interface AnimalFormProps {
   initialData?: Animal
 }
 
+const formatDate = (date: Date | undefined): string => {
+  if (!date) return ''
+  return date.toISOString().split('T')[0]
+}
 
 const coresBrinco = [
   { id: 'amarelo', nome: 'Amarelo', cor: 'bg-yellow-400' },
@@ -129,25 +133,35 @@ export const AnimalForm: React.FC<AnimalFormProps> = ({ onSubmit, onCancel, init
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">Data de Entrada</label>
-        <input
-          type="date"
-          value={formData.dataEntrada instanceof Date ? formData.dataEntrada.toISOString().split('T')[0] : formData.dataEntrada instanceof Timestamp ? formData.dataEntrada.toDate().toISOString().split('T')[0] : new Date(formData.dataEntrada).toISOString().split('T')[0]}
-          onChange={e => setFormData(prev => ({ ...prev, dataEntrada: new Date(e.target.value) }))}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          required
-        />
-      </div>
+      <label className="block text-sm font-medium text-gray-700">Data de Entrada</label>
+      <input
+        type="date"
+        value={formatDate(formData.dataEntrada)}
+        onChange={e =>
+          setFormData(prev => ({
+            ...prev,
+            dataEntrada: new Date(e.target.value) // armazenar como Date novamente
+          }))
+        }
+        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        required
+      />
+    </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Data de Nascimento</label>
-        <input
-          type="date"
-          value={formData.dataNascimento ? (formData.dataNascimento instanceof Date ? formData.dataNascimento.toISOString().split('T')[0] : formData.dataNascimento instanceof Timestamp ? formData.dataNascimento.toDate().toISOString().split('T')[0] : new Date(formData.dataNascimento).toISOString().split('T')[0]) : ''}
-          onChange={e => setFormData(prev => ({ ...prev, dataNascimento: e.target.value ? new Date(e.target.value) : undefined }))}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-        />
-      </div>
+    <div>
+      <label className="block text-sm font-medium text-gray-700">Data de Nascimento</label>
+      <input
+        type="date"
+        value={formatDate(formData.dataNascimento)}
+        onChange={e =>
+          setFormData(prev => ({
+            ...prev,
+            dataNascimento: new Date(e.target.value)
+          }))
+        }
+        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+      />
+    </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Raça</label>
