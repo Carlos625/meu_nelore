@@ -175,6 +175,9 @@ export default function AnimalList() {
               className="block w-full px-2 py-2 border border-gray-300 rounded-md text-xs"
             />
           </div>
+          <div>
+            <p className="text-xs text-gray-500">Total de animais: {animaisFiltrados.length}</p>
+          </div>
         </div>
       </div>
 
