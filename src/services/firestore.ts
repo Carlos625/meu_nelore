@@ -421,3 +421,65 @@ export async function limparDados() {
     throw error
   }
 }
+
+
+// dashboard
+
+export async function getDashboardStats(dataInicial?: string, dataFinal?: string) {
+  const [configSnap, incidentesSnap, vacinasSnap, todosAnimaisSnap] = await Promise.all([
+    getDoc(doc(db, 'configuracao', 'geral')),
+    getDocs(query(collection(db, 'incidentes'), orderBy('data', 'desc'), limit(5))),
+    getDocs(collection(db, 'vacinas')),
+    getDocs(collection(db, 'animais'))
+  ])
+
+  // Configuração de quantidade total de brincos
+  const config = configSnap.exists()
+    ? {
+        quantidadeTotalBrinco: configSnap.data().quantidadeTotalBrinco || 300
+      }
+    : { quantidadeTotalBrinco: 300 }
+
+  let totalAtivos = 0
+  let totalEntradas = 0
+  let totalAnimaisVacinados = 0
+
+  for (const doc of todosAnimaisSnap.docs) {
+    const data = doc.data()
+    const status = data.status || AnimalStatus.ATIVO
+    const dataEntrada = toDate(data.dataEntrada)
+
+    // Contagem de ativos
+    if (status === AnimalStatus.ATIVO) {
+      totalAtivos++
+    }
+
+    // Entradas no período (independente do status)
+    if (
+      dataEntrada &&
+      (!dataInicial || dataEntrada >= new Date(dataInicial)) &&
+      (!dataFinal || dataEntrada <= new Date(dataFinal))
+    ) {
+      totalEntradas++
+      const brinco = data.numeroBrinco?.toString()
+      const vacinado = vacinasSnap.docs.some(v => v.data().animalBrinco === brinco)
+      if (vacinado) totalAnimaisVacinados++
+    }
+  }
+
+  const totalSaidas = todosAnimaisSnap.docs.filter(
+    d => (d.data().status || AnimalStatus.ATIVO) !== AnimalStatus.ATIVO
+  ).length
+
+  return {
+    totalAnimais: totalAtivos,
+    totalEntradas,
+    totalSaidas,
+    totalBrincoDisponivel: config.quantidadeTotalBrinco - totalAtivos,
+    totalAnimaisVacinados,
+    ultimosIncidentes: incidentesSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Incidente[]
+  }
+}

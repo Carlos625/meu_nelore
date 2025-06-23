@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FaTag } from 'react-icons/fa'
 import { FaCow, FaArrowRightToBracket, FaArrowRightFromBracket } from 'react-icons/fa6'
-import { getAnimais, getConfiguracao, updateConfiguracao, getAllVacinas, getAllIncidentes } from '../services/firestore'
+import { updateConfiguracao, getDashboardStats } from '../services/firestore'
 import { Timestamp } from 'firebase/firestore'
 import LoadingSpinner from '../components/LoadingSpinner'
 import BrincoModal from '../components/BrincoModal'
-import { AnimalStatus, Incidente } from '../types'
+import { Incidente } from '../types'
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true)
@@ -20,7 +20,6 @@ const Dashboard = () => {
   const [dataInicial, setDataInicial] = useState('')
   const [dataFinal, setDataFinal] = useState('')
   const [ultimosIncidentes, setUltimosIncidentes] = useState<Incidente[]>([])
-  const [, setTotalAnimaisVacinados] = useState(0)
   const [isBrincoModalOpen, setIsBrincoModalOpen] = useState(false)
   const [quantidadeTotalBrinco, setQuantidadeTotalBrinco] = useState(300)
 
@@ -31,43 +30,17 @@ const Dashboard = () => {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [animais, vacinas, incidentes, config] = await Promise.all([
-        getAnimais(),
-        getAllVacinas(),
-        getAllIncidentes(),
-        getConfiguracao()
-      ])
-
-      setQuantidadeTotalBrinco(config?.quantidadeTotalBrinco || 300)
-
-      // Filtro por data de entrada
-      const animaisFiltrados = animais.filter(a => {
-        const dataEntrada = a.dataEntrada instanceof Timestamp ? a.dataEntrada.toDate() : a.dataEntrada
-        const afterStart = !dataInicial || dataEntrada >= new Date(dataInicial)
-        const beforeEnd = !dataFinal || dataEntrada <= new Date(dataFinal)
-        return afterStart && beforeEnd && a.status === AnimalStatus.ATIVO
-      })
-
-      // Calcular animais vacinados
-      const animaisVacinados = animaisFiltrados.filter(a => 
-        vacinas.some(v => v.animalBrinco === a.numeroBrinco)
-      ).length
-
-      const entradas = animaisFiltrados.length
-      const saidas = animais.filter(a => a.status !== AnimalStatus.ATIVO).length
-
+      const data = await getDashboardStats(dataInicial, dataFinal)
       setStats({
-        totalAnimais: animaisFiltrados.length,
-        totalEntradas: entradas,
-        totalSaidas: saidas,
-        totalBrincoDisponivel: (config?.quantidadeTotalBrinco || 300) - animais.filter(a => a.status === AnimalStatus.ATIVO).length,
-        totalAnimaisVacinados: animaisVacinados
+        totalAnimais: data.totalAnimais,
+        totalEntradas: data.totalEntradas,
+        totalSaidas: data.totalSaidas,
+        totalBrincoDisponivel: data.totalBrincoDisponivel,
+        totalAnimaisVacinados: data.totalAnimaisVacinados
       })
-
-      setTotalAnimaisVacinados(animaisVacinados)
-      setUltimosIncidentes(incidentes.slice(-5).reverse())
+      setUltimosIncidentes(data.ultimosIncidentes)
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
+      console.error('Erro ao carregar dados da dashboard:', error)
     } finally {
       setLoading(false)
     }
