@@ -1,4 +1,4 @@
-import { db, storage } from './firebase'
+import { db } from './firebase'
 import { 
   collection, 
   addDoc, 
@@ -11,10 +11,12 @@ import {
   where,
   Timestamp,
   limit,
-  orderBy
+  orderBy,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData
 } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { Animal, Incidente, Configuracao, AnimalStatus, IncidenteStatus, IncidenteTipo } from '../types'
+import { Animal, Incidente, Configuracao, AnimalStatus } from '../types'
 
 // Função auxiliar para converter Timestamp para Date
 function toDate(value: Date | Timestamp | undefined): Date | undefined {
@@ -83,6 +85,34 @@ export async function getAnimal(id: string): Promise<Animal> {
   }
 }
 
+export async function getAnimaisPaginados(
+  filtroStatus: string,
+  pageSize: number,
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null
+) {
+  let q = query(animaisCollection, orderBy('dataEntrada', 'desc'), limit(pageSize))
+
+  if (filtroStatus !== 'todos') {
+    q = query(animaisCollection,
+      where('status', '==', filtroStatus),
+      orderBy('dataEntrada', 'desc'),
+      limit(pageSize)
+    )
+  }
+
+  if (lastDoc) {
+    q = query(q, startAfter(lastDoc))
+  }
+
+  const snapshot = await getDocs(q)
+  const animais = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Animal))
+
+  return {
+    animais,
+    lastVisible: snapshot.docs[snapshot.docs.length - 1] || null
+  }
+}
+
 export async function addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) {
   try {
     console.log('Iniciando adição do animal:', animal)
@@ -90,8 +120,8 @@ export async function addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updat
     const animalData = {
       ...animal,
       numeroBrinco: animal.numeroBrinco.toString(),
-      dataEntrada: animal.dataEntrada ? Timestamp.fromDate(new Date(animal.dataEntrada)) : null,
-      dataNascimento: animal.dataNascimento ? Timestamp.fromDate(new Date(animal.dataNascimento)) : null,
+      dataEntrada: animal.dataEntrada ? Timestamp.fromDate(toDate(animal.dataEntrada) || new Date()) : null,
+      dataNascimento: animal.dataNascimento ? Timestamp.fromDate(toDate(animal.dataNascimento) || new Date()) : null,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     }
@@ -117,8 +147,8 @@ export async function updateAnimal(id: string, animal: Omit<Animal, 'id' | 'crea
     const animalData = {
       ...animal,
       numeroBrinco: animal.numeroBrinco.toString(),
-      dataEntrada: animal.dataEntrada ? Timestamp.fromDate(new Date(animal.dataEntrada)) : null,
-      dataNascimento: animal.dataNascimento ? Timestamp.fromDate(new Date(animal.dataNascimento)) : null,
+      dataEntrada: animal.dataEntrada ? Timestamp.fromDate(toDate(animal.dataEntrada) || new Date()) : null,
+      dataNascimento: animal.dataNascimento ? Timestamp.fromDate(toDate(animal.dataNascimento) || new Date()) : null,
       updatedAt: Timestamp.now()
     }
 
@@ -189,13 +219,24 @@ export async function updateIncidente(id: string, data: Partial<Incidente>) {
   })
 }
 
-export async function getIncidentes(animalId: string) {
+export async function getIncidentesAnimal(animalId: string) {
   const q = query(incidentesCollection, where('animalId', '==', animalId))
   const querySnapshot = await getDocs(q)
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as Incidente[]
+}
+
+export async function getIncidenteById(id: string): Promise<Incidente | null> {
+  const docRef = doc(incidentesCollection, id)
+  const docSnap = await getDoc(docRef)
+
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Incidente
+  } else {
+    return null
+  }
 }
 
 export async function getAllIncidentes() {
@@ -223,25 +264,16 @@ export const vacinasCollection = collection(db, 'vacinas')
 export async function addVacina(vacina: Omit<Vacina, 'id' | 'createdAt' | 'updatedAt'>) {
   try {
     console.log('Iniciando adição de vacina...', vacina)
-    
-    // Validar dados antes de salvar
+
     if (!vacina.animalBrinco) throw new Error('Brinco do animal é obrigatório')
     if (!vacina.nome) throw new Error('Nome da vacina é obrigatório')
     if (!vacina.dataAplicacao) throw new Error('Data de aplicação é obrigatória')
-    
-    const now = new Date()
-    console.log('Data atual:', now)
-    
-    // Converter datas para Timestamp
+
+
     const dataAplicacaoTimestamp = toTimestamp(vacina.dataAplicacao) || Timestamp.now()
     const dataProximaTimestamp = toTimestamp(vacina.dataProxima)
-    
-    console.log('Datas convertidas:', {
-      dataAplicacao: dataAplicacaoTimestamp,
-      dataProxima: dataProximaTimestamp
-    })
-    
-    const vacinaData = {
+
+    const vacinaData: any = {
       animalBrinco: vacina.animalBrinco,
       nome: vacina.nome,
       dataAplicacao: dataAplicacaoTimestamp,
@@ -250,7 +282,14 @@ export async function addVacina(vacina: Omit<Vacina, 'id' | 'createdAt' | 'updat
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     }
-    
+
+    // Remover campos undefined (especialmente observacoes)
+    Object.keys(vacinaData).forEach(key => {
+      if (vacinaData[key] === undefined) {
+        delete vacinaData[key]
+      }
+    })
+
     const docRef = await addDoc(vacinasCollection, vacinaData)
     return docRef.id
   } catch (error) {

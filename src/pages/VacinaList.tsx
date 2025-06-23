@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { getVacinas, getAnimais, Vacina, addVacina } from '../services/firestore'
+import { vacinaService } from '../services/vacinaService'
+import { animalService } from '../services/animalService'
 import { Animal } from '../types'
 import { Link } from 'react-router-dom'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { Timestamp } from 'firebase/firestore'
+import { Vacina } from '../types/vacina'
 
 function getStatusVacina(dataProxima: Date | Timestamp | undefined) {
   if (!dataProxima) return 'vencida'
@@ -15,20 +17,13 @@ function getStatusVacina(dataProxima: Date | Timestamp | undefined) {
   return 'em-dia'
 }
 
+
 export default function VacinaList() {
   const [vacinas, setVacinas] = useState<Vacina[]>([])
   const [animais, setAnimais] = useState<Animal[]>([])
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'em-dia' | 'proxima' | 'vencida'>('todos')
   const [loading, setLoading] = useState(true)
-  const [novoAnimal, setNovoAnimal] = useState({
-    numeroBrinco: '',
-    nome: '',
-    dataAplicacao: '',
-    dataProxima: '',
-    observacoes: ''
-  })
-  const [erro, setErro] = useState('')
 
   useEffect(() => {
     carregarDados()
@@ -38,8 +33,8 @@ export default function VacinaList() {
     try {
       setLoading(true)
       const [animaisData, vacinasData] = await Promise.all([
-        getAnimais(),
-        getVacinas('')
+        animalService.getAnimais(),
+        vacinaService.getTodasVacinas()
       ])
       setAnimais(animaisData)
       setVacinas(vacinasData)
@@ -50,48 +45,34 @@ export default function VacinaList() {
     }
   }
 
-  const carregarVacinas = async () => {
-    try {
-      const vacinasData = await getVacinas('')
-      setVacinas(vacinasData)
-    } catch (error) {
-      console.error('Erro ao carregar vacinas:', error)
-    }
-  }
 
   // Mapear última vacina por animal
-  const vacinasPorAnimal = animais.map(animal => {
-    const historico = vacinas.filter(v => String(v.animalBrinco) === String(animal.numeroBrinco))
-    const ultima = historico.sort((a, b) => {
-      const dataA = a.dataAplicacao instanceof Timestamp ? a.dataAplicacao.toDate() : a.dataAplicacao
-      const dataB = b.dataAplicacao instanceof Timestamp ? b.dataAplicacao.toDate() : b.dataAplicacao
-      return dataB.getTime() - dataA.getTime()
-    })[0]
-    return {
-      animal,
-      ultimaVacina: ultima
-    }
-  })
+  const vacinasPorAnimal: { animal: Animal; ultimaVacina: Vacina }[] = animais
+    .map(animal => {
+      const historico = vacinas.filter(v => String(v.animalBrinco) === String(animal.numeroBrinco))
+      if (historico.length === 0) return null
+      const ultima = historico.sort((a, b) => {
+        const dataA = a.dataAplicacao instanceof Timestamp ? a.dataAplicacao.toDate() : new Date(a.dataAplicacao as string)
+        const dataB = b.dataAplicacao instanceof Timestamp ? b.dataAplicacao.toDate() : new Date(b.dataAplicacao as string)
+        return dataB.getTime() - dataA.getTime()
+      })[0]
+      return { animal, ultimaVacina: ultima }
+    })
+    .filter((item): item is { animal: Animal; ultimaVacina: Vacina } => item !== null)
 
   // Filtros
   const filtrados = vacinasPorAnimal.filter(item => {
-    const matchBusca = item.animal.numeroBrinco.toString().includes(busca) ||
-      (item.animal.raca || '').toLowerCase().includes(busca.toLowerCase())
+    const matchBusca = item?.animal.numeroBrinco.toString().includes(busca) ||
+      (item?.animal.raca || '').toLowerCase().includes(busca.toLowerCase())
     let matchStatus = true
     if (filtroStatus !== 'todos') {
-      if (!item.ultimaVacina) {
+      if (!item?.ultimaVacina) {
         matchStatus = filtroStatus === 'vencida'
       } else {
-        matchStatus = getStatusVacina(item.ultimaVacina.dataProxima) === filtroStatus
+        matchStatus = getStatusVacina(item?.ultimaVacina.dataProxima as Date | Timestamp | undefined) === filtroStatus
       }
     }
     return matchBusca && matchStatus
-  })
-
-  const animaisFiltrados = animais.filter(animal => {
-    const matchBusca = animal.numeroBrinco.toString().includes(busca) ||
-      (animal.raca || '').toLowerCase().includes(busca.toLowerCase())
-    return matchBusca
   })
 
   // Resumo
@@ -99,49 +80,12 @@ export default function VacinaList() {
   const vacinados = vacinasPorAnimal.filter(v => v.ultimaVacina).length
   const percentual = total > 0 ? Math.round((vacinados / total) * 100) : 0
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const animalSelecionado = animais.find(a => a.numeroBrinco === novoAnimal.numeroBrinco)
-      if (!animalSelecionado) {
-        setErro('Animal não encontrado')
-        return
-      }
-
-      const vacinaData = {
-        animalBrinco: novoAnimal.numeroBrinco,
-        nome: novoAnimal.nome,
-        dataAplicacao: new Date(novoAnimal.dataAplicacao),
-        dataProxima: novoAnimal.dataProxima ? new Date(novoAnimal.dataProxima) : undefined,
-        observacoes: novoAnimal.observacoes
-      }
-
-      await addVacina(vacinaData)
-      setNovoAnimal({
-        numeroBrinco: '',
-        nome: '',
-        dataAplicacao: '',
-        dataProxima: '',
-        observacoes: ''
-      })
-      carregarVacinas()
-    } catch (error) {
-      console.error('Erro ao adicionar vacina:', error)
-      setErro('Erro ao adicionar vacina')
-    }
-  }
-
   return (
     <div>
       {loading ? (
         <LoadingSpinner />
       ) : (
         <>
-          {erro && (
-            <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-              <span className="block sm:inline">{erro}</span>
-            </div>
-          )}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Controle de Vacinas</h1>
             <div className="mt-2 flex flex-col sm:flex-row gap-4">
@@ -193,7 +137,8 @@ export default function VacinaList() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filtrados.map(({ animal, ultimaVacina }) => {
-                  const status = getStatusVacina(ultimaVacina?.dataProxima)
+                  if (!animal || !ultimaVacina) return null
+                  const status = getStatusVacina(ultimaVacina?.dataProxima as Date | Timestamp | undefined)
                   return (
                     <tr key={animal.id} className={
                       status === 'vencida' ? 'bg-red-50' : status === 'proxima' ? 'bg-yellow-50' : ''
@@ -203,13 +148,17 @@ export default function VacinaList() {
                       <td className="px-4 py-2">{ultimaVacina ? (
                         ultimaVacina.dataAplicacao instanceof Timestamp 
                           ? ultimaVacina.dataAplicacao.toDate().toLocaleDateString()
-                          : ultimaVacina.dataAplicacao.toLocaleDateString()
+                          : ultimaVacina.dataAplicacao instanceof Date
+                            ? ultimaVacina.dataAplicacao.toLocaleDateString()
+                            : new Date(ultimaVacina.dataAplicacao as string).toLocaleDateString()
                       ) : '-'}</td>
                       <td className="px-4 py-2">{ultimaVacina ? ultimaVacina.nome : '-'}</td>
                       <td className="px-4 py-2">{ultimaVacina ? (
                         ultimaVacina.dataProxima instanceof Timestamp
                           ? ultimaVacina.dataProxima.toDate().toLocaleDateString()
-                          : ultimaVacina.dataProxima?.toLocaleDateString() || '-'
+                          : ultimaVacina.dataProxima instanceof Date
+                            ? ultimaVacina.dataProxima.toLocaleDateString()
+                            : new Date(ultimaVacina.dataProxima as string).toLocaleDateString()
                       ) : '-'}</td>
                       <td className="px-4 py-2">
                         {status === 'em-dia' && <span className="px-2 py-1 rounded bg-green-100 text-green-800 text-xs">Em dia</span>}
@@ -221,81 +170,6 @@ export default function VacinaList() {
                 })}
               </tbody>
             </table>
-          </div>
-          <div className="mt-4">
-            <h2 className="text-xl font-bold mb-4">Registrar Nova Vacina</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="numeroBrinco" className="block text-sm font-medium text-gray-700">
-                  Número do Brinco
-                </label>
-                <select
-                  value={novoAnimal.numeroBrinco}
-                  onChange={e => setNovoAnimal({ ...novoAnimal, numeroBrinco: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  required
-                >
-                  <option value="">Selecione um animal</option>
-                  {animaisFiltrados.map(animal => (
-                    <option key={animal.id} value={animal.numeroBrinco}>
-                      {animal.numeroBrinco} - {animal.raca}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="nome" className="block text-sm font-medium text-gray-700">
-                  Nome
-                </label>
-                <input
-                  type="text"
-                  id="nome"
-                  value={novoAnimal.nome}
-                  onChange={e => setNovoAnimal({ ...novoAnimal, nome: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="dataAplicacao" className="block text-sm font-medium text-gray-700">
-                  Data de Aplicação
-                </label>
-                <input
-                  type="date"
-                  id="dataAplicacao"
-                  value={novoAnimal.dataAplicacao}
-                  onChange={e => setNovoAnimal({ ...novoAnimal, dataAplicacao: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="dataProxima" className="block text-sm font-medium text-gray-700">
-                  Data Próxima
-                </label>
-                <input
-                  type="date"
-                  id="dataProxima"
-                  value={novoAnimal.dataProxima}
-                  onChange={e => setNovoAnimal({ ...novoAnimal, dataProxima: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="observacoes" className="block text-sm font-medium text-gray-700">
-                  Observações
-                </label>
-                <textarea
-                  id="observacoes"
-                  value={novoAnimal.observacoes}
-                  onChange={e => setNovoAnimal({ ...novoAnimal, observacoes: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                />
-              </div>
-              <button type="submit" className="mt-4 px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700">
-                Registrar Vacina
-              </button>
-            </form>
           </div>
         </>
       )}

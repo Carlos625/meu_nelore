@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getAnimais } from '../services/firestore'
 import { Animal } from '../types'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { FaCow } from 'react-icons/fa6'
 import LoadingSpinner from '../components/LoadingSpinner'
+
+const ITEMS_PER_PAGE = 10
 
 export default function AnimalList() {
   const [animais, setAnimais] = useState<Animal[]>([])
@@ -13,10 +15,19 @@ export default function AnimalList() {
   const [filtroStatus, setFiltroStatus] = useState<Animal['status'] | 'todos'>('todos')
   const [dataInicial, setDataInicial] = useState('')
   const [dataFinal, setDataFinal] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   useEffect(() => {
+    const statusUrl = searchParams.get('status')?.toLowerCase()
+    if (statusUrl && ['ativo', 'vendido', 'abatido', 'morto'].includes(statusUrl)) {
+      setFiltroStatus(statusUrl as Animal['status'])
+    }
+
     loadData()
-  }, [])
+  }, [searchParams])
 
   async function loadData() {
     try {
@@ -48,13 +59,8 @@ export default function AnimalList() {
     if (!animal) return false
 
     const numeroBrinco = String(animal.numeroBrinco || '')
-
-    const raca = typeof animal.raca === 'string' 
-      ? animal.raca.toLowerCase() 
-      : ''
-
+    const raca = typeof animal.raca === 'string' ? animal.raca.toLowerCase() : ''
     const buscaLower = busca.toLowerCase()
-
     const matchBusca = numeroBrinco.includes(busca) || raca.includes(buscaLower)
     const matchStatus = filtroStatus === 'todos' || animal.status === filtroStatus
 
@@ -69,8 +75,7 @@ export default function AnimalList() {
       } else {
         dataEntrada = new Date()
       }
-    } catch (error) {
-      console.error('Erro ao converter data:', error)
+    } catch {
       dataEntrada = new Date()
     }
 
@@ -80,9 +85,32 @@ export default function AnimalList() {
     return matchBusca && matchStatus && afterStart && beforeEnd
   })
 
-  if (loading) {
-    return <LoadingSpinner />
+  const totalPages = Math.ceil(animaisFiltrados.length / ITEMS_PER_PAGE)
+  const animaisPaginados = animaisFiltrados.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
+  function handleStatusChange(status: string) {
+    setFiltroStatus(status as Animal['status'] | 'todos')
+    setCurrentPage(1)
+
+    const params = new URLSearchParams(window.location.search)
+    if (status === 'todos') {
+      params.delete('status')
+    } else {
+      params.set('status', status)
+    }
+    navigate({ search: params.toString() }, { replace: true })
   }
+
+  function handlePageChange(page: number) {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
+  if (loading) return <LoadingSpinner />
 
   return (
     <div>
@@ -104,13 +132,13 @@ export default function AnimalList() {
         <div className="flex-1">
           <div className="relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              onChange={(e) => { setBusca(e.target.value); setCurrentPage(1) }}
+              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-md sm:text-sm"
               placeholder="Buscar por brinco ou raça"
             />
           </div>
@@ -118,8 +146,8 @@ export default function AnimalList() {
         <div className="w-full sm:w-48">
           <select
             value={filtroStatus}
-            onChange={(e) => setFiltroStatus(e.target.value as Animal['status'] | 'todos')}
-            className="block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="block w-full pl-3 pr-10 py-3 text-base border-gray-300 sm:text-sm rounded-md"
           >
             <option value="todos">Todos os Status</option>
             <option value="ativo">Ativos</option>
@@ -134,9 +162,8 @@ export default function AnimalList() {
             <input
               type="date"
               value={dataInicial}
-              onChange={e => setDataInicial(e.target.value)}
-              className="block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm text-xs"
-              placeholder="Data inicial"
+              onChange={e => { setDataInicial(e.target.value); setCurrentPage(1) }}
+              className="block w-full px-2 py-2 border border-gray-300 rounded-md text-xs"
             />
           </div>
           <div>
@@ -144,9 +171,8 @@ export default function AnimalList() {
             <input
               type="date"
               value={dataFinal}
-              onChange={e => setDataFinal(e.target.value)}
-              className="block w-full px-2 py-2 border border-gray-300 rounded-md shadow-sm text-xs"
-              placeholder="Data final"
+              onChange={e => { setDataFinal(e.target.value); setCurrentPage(1) }}
+              className="block w-full px-2 py-2 border border-gray-300 rounded-md text-xs"
             />
           </div>
         </div>
@@ -154,32 +180,28 @@ export default function AnimalList() {
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
-          {animaisFiltrados.map((animal) => (
+          {animaisPaginados.map((animal) => (
             <li key={animal.id}>
               <Link to={`/animais/${animal.id}`} className="block hover:bg-gray-50">
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       {animal.foto ? (
-                        <img
-                          src={animal.foto}
-                          alt={`Animal ${String(animal.numeroBrinco || '')}`}
-                          className="h-12 w-12 rounded-full object-cover"
-                        />
+                        <img src={animal.foto} alt={`Animal ${animal.numeroBrinco}`} className="h-12 w-12 rounded-full object-cover" />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-gray-500 text-lg font-medium">
-                            {String(animal.numeroBrinco || '')}
-                          </span>
+                          <span className="text-gray-500 text-lg font-medium">{animal.numeroBrinco}</span>
                         </div>
                       )}
                       <div className="ml-4">
                         <p className="text-sm font-medium text-primary-600 flex items-center gap-2">
-                          Brinco {String(animal.numeroBrinco || '')}
+                          Brinco {animal.numeroBrinco}
                           <span className={`inline-block w-3 h-3 rounded-full ${
                             coresBrinco.find(cor => cor.id === animal.corBrinco)?.cor || 'bg-gray-300'
-                          }`} title={animal.corBrinco || ''}></span>
-                          <span className="text-xs text-gray-500 capitalize">{coresBrinco.find(cor => cor.id === animal.corBrinco)?.nome || ''}</span>
+                          }`} title={animal.corBrinco}></span>
+                          <span className="text-xs text-gray-500 capitalize">
+                            {coresBrinco.find(cor => cor.id === animal.corBrinco)?.nome || ''}
+                          </span>
                         </p>
                         <p className="text-sm text-gray-500">{animal.raca || ''}</p>
                       </div>
@@ -198,6 +220,35 @@ export default function AnimalList() {
           ))}
         </ul>
       </div>
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex justify-center gap-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+          >
+            Anterior
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => (
+            <button
+              key={i + 1}
+              onClick={() => handlePageChange(i + 1)}
+              className={`px-3 py-1 text-sm border rounded ${currentPage === i + 1 ? 'bg-primary-600 text-white' : ''}`}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 text-sm border rounded disabled:opacity-50"
+          >
+            Próxima
+          </button>
+        </div>
+      )}
     </div>
   )
-} 
+}

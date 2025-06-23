@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { incidenteService, animalService } from '../services'
 import { getAllIncidentes, getAnimais } from '../services/firestore'
 import { Incidente } from '../types/incidente'
-import { Animal } from '../types/animal'
+import { Animal } from '../types/index'
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+
+// Utilitário para lidar com data Firebase
+function converterParaDate(data: any): Date | null {
+  if (!data) return null
+  if (data instanceof Date) return data
+  if (typeof data?.toDate === 'function') return data.toDate()
+  if (typeof data.seconds === 'number') return new Date(data.seconds * 1000)
+  return null
+}
 
 export default function IncidentList() {
   const [incidentes, setIncidentes] = useState<Incidente[]>([])
-  const [animais, setAnimais] = useState<Record<string, Animal>>({})
+  const [animais, setAnimais] = useState<Animal[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<Incidente['status'] | 'todos'>('todos')
@@ -21,12 +29,13 @@ export default function IncidentList() {
   async function loadData() {
     try {
       setLoading(true)
-      const data = await getAllIncidentes()
-      const animaisData = await getAnimais()
+      const [incidentesData, animaisData] = await Promise.all([
+        getAllIncidentes(),
+        getAnimais()
+      ])
+
+      setIncidentes(incidentesData as unknown as Incidente[])
       setAnimais(animaisData)
-      console.log(data)
-      console.log(animais)
-      setIncidentes(data as unknown as Incidente[])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
@@ -35,9 +44,9 @@ export default function IncidentList() {
   }
 
   const incidentesFiltrados = incidentes.filter(incidente => {
-    const animal = animais[incidente.animalId]
+    const animal = animais.find(a => String(a.id) === String(incidente.animalId))
     const matchBusca = animal && (
-      animal.brinco.toString().includes(busca) ||
+      animal.numeroBrinco.toString().includes(busca) ||
       incidente.descricao.toLowerCase().includes(busca.toLowerCase())
     )
     const matchStatus = filtroStatus === 'todos' || incidente.status === filtroStatus
@@ -107,7 +116,8 @@ export default function IncidentList() {
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
           {incidentesFiltrados.map((incidente) => {
-            const animal = animais[incidente.animalId]
+            const animal = animais.find(a => a.id === incidente.animalId.toString())
+            const dataFormatada = converterParaDate(incidente.data)?.toLocaleDateString('pt-BR') || 'Data inválida'
             return (
               <li key={incidente.id}>
                 <Link to={`/incidentes/${incidente.id}`} className="block hover:bg-gray-50">
@@ -123,13 +133,13 @@ export default function IncidentList() {
                         ) : (
                           <div className="h-12 w-12 rounded-lg bg-gray-200 flex items-center justify-center">
                             <span className="text-gray-500 text-lg font-medium">
-                              {animal?.brinco}
+                              {animal?.numeroBrinco || 'N/A'}
                             </span>
                           </div>
                         )}
                         <div className="ml-4">
                           <p className="text-sm font-medium text-primary-600">
-                            Animal #{animal?.brinco || 'N/A'} - {typeof incidente.tipo === 'string' 
+                            Animal #{animal?.numeroBrinco || incidente.animalId} - {typeof incidente.tipo === 'string' 
                               ? incidente.tipo.charAt(0).toUpperCase() + incidente.tipo.slice(1)
                               : 'Tipo não informado'}
                           </p>
@@ -149,11 +159,7 @@ export default function IncidentList() {
                       </div>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          {new Date(incidente.data).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
+                      <p className="text-sm text-gray-500">{dataFormatada}</p>
                     </div>
                     {incidente.observacoes && (
                       <div className="mt-2">
@@ -169,4 +175,4 @@ export default function IncidentList() {
       </div>
     </div>
   )
-} 
+}

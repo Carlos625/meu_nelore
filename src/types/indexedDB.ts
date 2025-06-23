@@ -1,6 +1,8 @@
+// src/types/indexedDB.ts
 export interface Animal {
   id: string
-  brinco: number
+  numeroBrinco: string
+  corBrinco: 'amarelo' | 'verde' | 'azul' | 'vermelho'
   raca: string
   idade: number
   foto?: string
@@ -14,7 +16,7 @@ export interface Animal {
 export interface Incidente {
   id: string
   animalId: string
-  tipo: 'doenca' | 'acidente' | 'outro'
+  tipo: 'doença' | 'ferimento' | 'tratamento' | 'vacinação'
   descricao: string
   data: Date
   foto?: string
@@ -22,11 +24,13 @@ export interface Incidente {
   status: 'pendente' | 'resolvido'
 }
 
-export interface SyncQueue {
+export interface Vacina {
   id: string
-  tipo: 'animal' | 'incidente'
-  operacao: 'create' | 'update' | 'delete'
-  dados: any
-  timestamp: Date
-  status: 'pendente' | 'sincronizado' | 'erro'
-} 
+  animalBrinco: string
+  nome: string
+  dataAplicacao: Date
+  dataProxima?: Date
+  observacoes?: string
+  createdAt: Date
+  updatedAt: Date
+}

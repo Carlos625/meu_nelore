@@ -1,60 +1,111 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { getAnimais, deleteAnimal } from '../services/firestore'
-import { getIncidentes } from '../services/firestore'
-import { Animal, Incidente, AnimalStatus } from '../types'
-import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
-import LoadingSpinner from '../components/LoadingSpinner'
-import ImageModal from '../components/ImageModal'
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getAnimais, deleteAnimal } from '../services/firestore';
+import { getIncidentesAnimal } from '../services/firestore';
+import { Animal, Incidente, AnimalStatus } from '../types';
+import { PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ImageModal from '../components/ImageModal';
+// Remova a importação de Timestamp se Animal já estiver vindo com Date ou string
+// import { Timestamp } from 'firebase/firestore'; 
 
 export default function AnimalDetails() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [animal, setAnimal] = useState<Animal | null>(null)
-  const [incidentes, setIncidentes] = useState<Incidente[]>([])
-  const [loading, setLoading] = useState(true)
-  const [erro, setErro] = useState('')
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [animal, setAnimal] = useState<Animal | null>(null);
+  const [incidentes, setIncidentes] = useState<Incidente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState('');
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
-      loadData()
+      loadData();
     }
-  }, [id])
+  }, [id]);
 
   async function loadData() {
     try {
-      setLoading(true)
-      const animais = await getAnimais()
-      const animalData = animais.find(a => a.id === id)
+      setLoading(true);
+      const animais = await getAnimais();
+      const animalData = animais.find(a => a.id === id);
       if (animalData) {
-        setAnimal(animalData)
-        const incidentesData = await getIncidentes(animalData.id)
-        setIncidentes(incidentesData)
+        setAnimal(animalData);
+        const incidentesData = await getIncidentesAnimal(animalData.id);
+        setIncidentes(incidentesData);
       } else {
-        setErro('Animal não encontrado')
+        setErro('Animal não encontrado');
       }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
-      setErro('Erro ao carregar dados do animal')
+      console.error('Erro ao carregar dados:', error);
+      setErro('Erro ao carregar dados do animal');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
+  }
+    
+  /**
+   * Converte a entrada de data (Date ou string ISO 8601) para um objeto Date.
+   * Se a entrada já for um Date, usa diretamente. Se for string, tenta criar um Date.
+   * Não faz manipulação de fuso horário aqui, apenas garante que é um Date válido.
+   * @param input A data a ser parseada (Date ou string).
+   * @returns Um objeto Date, ou null se a entrada for inválida.
+   */
+  function parseDateForDisplay(input: any): Date | null {
+    if (!input) {
+      return null;
+    }
+
+    let dateObj: Date;
+
+    if (input instanceof Date) {
+      dateObj = input;
+    } else if (typeof input === 'string') {
+      // Cria um Date object a partir da string ISO 8601 (ex: "2025-06-02T00:00:00.000Z")
+      // O construtor Date() já lida com o 'Z' (UTC) corretamente.
+      dateObj = new Date(input);
+    } else {
+      return null; // Tipo de entrada desconhecido
+    }
+
+    if (isNaN(dateObj.getTime())) {
+      return null; // A data é inválida
+    }
+    
+    return dateObj;
+  }
+  
+  /**
+   * Formata um objeto de data para a string no formato 'DD/MM/YYYY',
+   * forçando o fuso horário de São Paulo para consistência na exibição.
+   * @param input A data a ser formatada (qualquer tipo aceito por parseDateForDisplay).
+   * @returns A data formatada como string 'DD/MM/YYYY', ou 'Data inválida'.
+   */
+  function formatDateBR(input: any): string {
+    const date = parseDateForDisplay(input);
+    if (!date) { // parseDateForDisplay já retorna null se inválido
+      return 'Data inválida';
+    }
+    
+    // O segredo está aqui: o toLocaleDateString() com timeZone 'America/Sao_Paulo'
+    // garante que o dia seja exibido corretamente no fuso horário do Brasil,
+    // mesmo que o Date object interno esteja representando uma hora no dia anterior em GMT-0300.
+    return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   }
 
   async function handleDelete() {
     if (!animal || !window.confirm('Tem certeza que deseja excluir este animal?')) {
-      return
+      return;
     }
 
     try {
-      setLoading(true)
-      await deleteAnimal(animal.id)
-      navigate('/animais')
+      setLoading(true);
+      await deleteAnimal(animal.id);
+      navigate('/animais');
     } catch (error) {
-      console.error('Erro ao excluir animal:', error)
-      setErro('Erro ao excluir animal')
-      setLoading(false)
+      console.error('Erro ao excluir animal:', error);
+      setErro('Erro ao excluir animal');
+      setLoading(false);
     }
   }
 
@@ -63,7 +114,7 @@ export default function AnimalDetails() {
       <div className="flex items-center justify-center min-h-[400px]">
         <LoadingSpinner />
       </div>
-    )
+    );
   }
 
   if (erro || !animal) {
@@ -75,7 +126,7 @@ export default function AnimalDetails() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -162,26 +213,14 @@ export default function AnimalDetails() {
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Data de Entrada</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {animal.dataEntrada instanceof Date 
-                  ? animal.dataEntrada.toLocaleDateString('pt-BR')
-                  : animal.dataEntrada?.toDate 
-                    ? animal.dataEntrada.toDate().toLocaleDateString('pt-BR')
-                    : typeof animal.dataEntrada === 'string'
-                      ? new Date(animal.dataEntrada).toLocaleDateString('pt-BR')
-                      : 'Data não informada'}
+                {formatDateBR(animal.dataEntrada)}
               </dd>
             </div>
             {animal.dataNascimento && (
               <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Data de Nascimento</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {animal.dataNascimento instanceof Date 
-                    ? animal.dataNascimento.toLocaleDateString('pt-BR')
-                    : animal.dataNascimento?.toDate 
-                      ? animal.dataNascimento.toDate().toLocaleDateString('pt-BR')
-                      : typeof animal.dataNascimento === 'string'
-                        ? new Date(animal.dataNascimento).toLocaleDateString('pt-BR')
-                        : 'Data não informada'}
+                  {formatDateBR(animal.dataNascimento)}
                 </dd>
               </div>
             )}
@@ -241,13 +280,8 @@ export default function AnimalDetails() {
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
                         <p className="flex items-center text-sm text-gray-500">
-                          {incidente.data instanceof Date 
-                            ? incidente.data.toLocaleDateString('pt-BR')
-                            : incidente.data?.toDate 
-                              ? incidente.data.toDate().toLocaleDateString('pt-BR')
-                              : typeof incidente.data === 'string'
-                                ? new Date(incidente.data).toLocaleDateString('pt-BR')
-                                : 'Data não informada'}
+                          {/* Usa a função formatDateBR para incidentes também */}
+                          {formatDateBR(incidente.data)}
                         </p>
                       </div>
                     </div>
@@ -266,5 +300,5 @@ export default function AnimalDetails() {
         title={`Animal ${animal.numeroBrinco}`}
       />
     </div>
-  )
-} 
+  );
+}

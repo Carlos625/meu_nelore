@@ -1,48 +1,59 @@
+import {
+  addVacina,
+  getVacinas,
+  getAllVacinas,
+  getVacinasByAnimalBrinco
+} from './firestore'
+
 import { Vacina } from '../types/vacina'
-import { db } from './indexedDB'
 
 export const vacinaService = {
-  async getAll(): Promise<Vacina[]> {
+  async addVacina(vacina: Omit<Vacina, 'id'>) {
     try {
-      return await db.vacinas.toArray()
+      const vacinaFormatada = {
+        ...vacina,
+        dataAplicacao: vacina.dataAplicacao instanceof Date
+          ? vacina.dataAplicacao
+          : new Date(vacina.dataAplicacao),
+        dataProxima: vacina.dataProxima
+          ? vacina.dataProxima instanceof Date
+            ? vacina.dataProxima
+            : new Date(vacina.dataProxima)
+          : undefined
+      }
+
+      const id = await addVacina(vacinaFormatada)
+      return id
     } catch (error) {
-      console.error('Erro ao buscar vacinas:', error)
-      return []
-    }
-  },
-  async getByBrinco(animalBrinco: string): Promise<Vacina[]> {
-    try {
-      return await db.vacinas.where('animalBrinco').equals(animalBrinco).toArray()
-    } catch (error) {
-      console.error('Erro ao buscar vacinas do animal:', error)
-      return []
-    }
-  },
-  async create(vacina: Omit<Vacina, 'id'>): Promise<Vacina> {
-    try {
-      const id = await db.vacinas.add(vacina)
-      return { ...vacina, id: id.toString() }
-    } catch (error) {
-      console.error('Erro ao criar vacina:', error)
+      console.error('Erro ao adicionar vacina:', error)
       throw error
     }
   },
-  async update(id: string, vacina: Partial<Vacina>): Promise<boolean> {
+
+  async getTodasVacinas(): Promise<Vacina[]> {
     try {
-      await db.vacinas.update(Number(id), vacina)
-      return true
+      return await getAllVacinas() as Vacina[]
     } catch (error) {
-      console.error('Erro ao atualizar vacina:', error)
-      return false
+      console.error('Erro ao buscar todas as vacinas:', error)
+      throw error
     }
   },
-  async delete(id: string): Promise<boolean> {
+
+  async getVacinasPorBrinco(animalBrinco: string): Promise<Vacina[]> {
     try {
-      await db.vacinas.delete(Number(id))
-      return true
+      return await getVacinas(animalBrinco) as Vacina[]
     } catch (error) {
-      console.error('Erro ao deletar vacina:', error)
-      return false
+      console.error('Erro ao buscar vacinas por brinco:', error)
+      throw error
+    }
+  },
+
+  async getVacinasBrutasPorBrinco(animalBrinco: string): Promise<Vacina[]> {
+    try {
+      return await getVacinasByAnimalBrinco(animalBrinco) as Vacina[]
+    } catch (error) {
+      console.error('Erro ao buscar vacinas brutas:', error)
+      throw error
     }
   }
-} 
+}

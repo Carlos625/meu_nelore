@@ -12,7 +12,7 @@ interface Medicamento {
 }
 
 export default function Medicamentos() {
-  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
+  const [medicamentos] = useState<Medicamento[]>([])
   const [animais, setAnimais] = useState<Animal[]>([])
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { AnimalForm } from './AnimalForm'
-import { getAnimal, updateAnimal } from '../services/firestore'
+import { AnimalForm } from '../components/AnimalForm'
+import { getAnimal, updateAnimal, addAnimal } from '../services/firestore'
 import { Animal } from '../types'
 
 export function AnimalFormPage() {
@@ -33,8 +33,9 @@ export function AnimalFormPage() {
   const handleSubmit = async (data: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       if (id) {
-        console.log('Atualizando animal:', id, data)
         await updateAnimal(id, data)
+      } else {
+        await addAnimal(data) // <- importante
       }
       navigate('/animais')
     } catch (err) {
@@ -43,15 +44,10 @@ export function AnimalFormPage() {
     }
   }
 
-  if (loading) {
-    return <div>Carregando...</div>
-  }
-
-  if (error) {
-    return <div>Erro: {error}</div>
-  }
-
   return (
+    <>
+      {loading && <div className="p-4">Carregando...</div>}
+      {error && <div className="p-4">Erro: {error}</div>}
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">
         {id ? 'Editar Animal' : 'Novo Animal'}
@@ -62,5 +58,6 @@ export function AnimalFormPage() {
         initialData={animal || undefined}
       />
     </div>
+    </>
   )
 } 

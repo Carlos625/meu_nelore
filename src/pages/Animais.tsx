@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getAnimais, addAnimal, updateAnimal, deleteAnimal } from '../services/firestore'
 import { Animal, AnimalStatus } from '../types'
 import { Timestamp } from 'firebase/firestore'
-import { AnimalForm } from './AnimalForm'
+import { AnimalForm } from '../components/AnimalForm'
 import Pagination from '../components/Pagination'
 import Toast from '../components/Toast'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -127,7 +127,12 @@ export default function Animais() {
 
   async function handleStatusChange(id: string, novoStatus: AnimalStatus) {
     try {
-      await updateAnimal(id, { status: novoStatus })
+      const animalNow = animais.find(a => a.id === id)
+      if (!animalNow) return
+
+      const { id: _, createdAt, updatedAt, ...resto } = animalNow
+
+      await updateAnimal(id, { ...resto, status: novoStatus })
       carregarAnimais()
       setToast({
         show: true,

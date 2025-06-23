@@ -1,4 +1,4 @@
-import { addIncidente, getIncidentes, getAllIncidentes, updateIncidente, deleteIncidente } from './firestore'
+import { addIncidente, getIncidentesAnimal, getAllIncidentes, updateIncidente, deleteIncidente } from './firestore'
 import { Incidente } from '../types'
 
 export const incidenteService = {
@@ -14,7 +14,7 @@ export const incidenteService = {
 
   async getIncidentes(animalId: string) {
     try {
-      const incidentes = await getIncidentes(animalId)
+      const incidentes = await getIncidentesAnimal(animalId)
       return incidentes
     } catch (error) {
       console.error('Erro ao buscar incidentes:', error)

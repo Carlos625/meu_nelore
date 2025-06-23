@@ -5,7 +5,7 @@ import AnimalList from './pages/AnimalList'
 import { AnimalFormPage } from './pages/AnimalFormPage'
 import AnimalDetails from './pages/AnimalDetails'
 import IncidentList from './pages/IncidentList'
-import IncidentForm from './pages/IncidentForm'
+import IncidentForm from './pages/IncidentPageForm'
 import IncidentDetails from './pages/IncidentDetails'
 import ErrorPage from './components/ErrorPage'
 

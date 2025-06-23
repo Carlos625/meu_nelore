@@ -1,5 +1,5 @@
 export interface Vacina {
-  id?: string; // Tornando o id opcional
+  id?: string;
   animalBrinco: string;
   nome: string;
   dataAplicacao: Date | string;

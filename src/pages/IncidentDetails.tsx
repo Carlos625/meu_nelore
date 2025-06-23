@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getIncidentes, getAnimal, deleteIncidente } from '../services/firestore'
+import { getIncidenteById, getAnimal, deleteIncidente } from '../services/firestore'
 import { Animal, Incidente, IncidenteStatus, IncidenteTipo } from '../types'
 
 export default function IncidentDetails() {
@@ -20,8 +20,7 @@ export default function IncidentDetails() {
 
     try {
       setLoading(true)
-      const incidentes = await getIncidentes(id)
-      const data = incidentes[0]
+      const data = await getIncidenteById(id)
       if (data) {
         setIncidente(data)
         if (data.animalId) {

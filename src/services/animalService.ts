@@ -1,5 +1,5 @@
 import { addAnimal, getAnimais, updateAnimal, deleteAnimal } from './firestore'
-import { Animal, AnimalStatus } from '../types'
+import { Animal } from '../types'
 
 export const animalService = {
   async addAnimal(animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) {
@@ -22,7 +22,7 @@ export const animalService = {
     }
   },
 
-  async updateAnimal(id: string, animal: Partial<Animal>) {
+  async updateAnimal(id: string, animal: Omit<Animal, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
       await updateAnimal(id, animal)
     } catch (error) {

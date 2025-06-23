@@ -11,7 +11,7 @@ const AnimalList = lazy(() => import('./pages/AnimalList'))
 const AnimalFormPage = lazy(() => import('./pages/AnimalFormPage').then(module => ({ default: module.AnimalFormPage })))
 const AnimalDetails = lazy(() => import('./pages/AnimalDetails'))
 const IncidentList = lazy(() => import('./pages/IncidentList'))
-const IncidentForm = lazy(() => import('./pages/IncidentForm'))
+const IncidentForm = lazy(() => import('./pages/IncidentPageForm'))
 const IncidentDetails = lazy(() => import('./pages/IncidentDetails'))
 
 export const routes: RouteObject[] = [
@@ -120,7 +120,7 @@ export const routes: RouteObject[] = [
             path: 'nova',
             element: (
               <Suspense fallback={<LoadingSpinner />}>
-                {React.createElement(lazy(() => import('./pages/VacinaForm')))}
+                {React.createElement(lazy(() => import('./pages/VacinaFormPage')))}
               </Suspense>
             )
           }
